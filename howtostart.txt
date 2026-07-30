@@ -1,0 +1,24 @@
+AUTH SETUP (once)
+-----------------
+1. In Supabase → SQL Editor, run the file:
+   supabase/migrations/001_user_isolation.sql
+2. In Supabase → Authentication, enable Email provider.
+   (Optional) turn OFF "Confirm email" while testing locally.
+3. Add to frontend/.env.local:
+   NEXT_PUBLIC_SUPABASE_URL=...
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+   (from Supabase → Project Settings → API)
+
+To start backend:
+open a new terminal
+cd backend
+.\.venv\Scripts\Activate.ps1
+python main.py
+
+To start frontend:
+open a new terminal
+cd frontend
+npm run dev
+
+Then open http://localhost:3000 and create an account / sign in.
+

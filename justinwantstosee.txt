@@ -1,0 +1,33 @@
+hi cursor, i am justin, the big brother of malia, and she designed this app, alara, 
+which you can read more about in the prd, and so I want you to help mer implement
+this app. each day ill put down the requirements of what i want to see her implement
+for that day.
+
+7/22
+-----
+today, what i want to see is no authentication yet, just the main page,
+with the daily learning input feature implemented, and saved to a database, and displayed
+no need to upload pictures of notes yet, they should just paste the notes
+into the daily learnings. 
+
+so what i want to see is mainly just the main stack of the app:
+    front end: nextjs/react/tailwind
+    database: supabase (help her set this up as well, account creation, etc)
+    backend: python fastapi
+
+now, make sure to also walk her through what the reasoning for each step is, i want
+her to learn, not just make. 
+
+7/23
+----
+today, it looks like the daily learning input feature is implemented, now i want
+to see the quiz generation, saving the generated quiz, and being able to do the
+generated quiz. it should probably just be multiple choice for now, what i am 
+imagining is to have the llm generate a short json of components that can be 
+parsed and rendered on the frontend...but give her some creative liberty on how
+to do this, also walk her through the api key creation for whatever llm provider
+you think is best/most generous with a free key (maybe gemini? does cursor include
+a key with it's subscription?). also explain things more concisely to her, remember
+that she is 13, so she doesnt need to know the super details, just a high level of how
+everything works. also, since she's a girl, maybe put a little bit of effort into styling it,
+not just black and white, add some pastel colors maybe, just so its more engagingz

@@ -1,0 +1,236 @@
+Alara prd
+Overview:
+Alara is an AI-based study software designed to help students track, organize, and manage their learning journey. Alara continuously collects and remembers the information students provide daily, allowing it to build a deeper understanding of each student's learning progress. Students can provide information through various forms, including notes, worksheets, homework, or personal explanations written in their own words. Using this stored data, Alara generates personalized quizzes after each daily input, ensuring that students remember what they learned that day as well as previous lessons. Over time, Alara becomes increasingly personalized by analyzing each student's learning patterns, identifying their strengths, and recognizing topics where they need additional support. This allows Alara to provide more effective study recommendations, helping students strengthen their understanding, improve information retention, and develop healthy study habits for the future.  
+
+Problem:
+Many students rely on ineffective study habits that make it harder to remember information over the long term. Surveys show that 99% of students admit to cramming, and nearly half of all students regularly rely on it as their primary study method. Cramming is often ineffective because the brain can only process a limited amount of new information in a short period of time. Think of it like pouring a giant bucket of water into a tiny cup, most of the water spills out and is lost. Additionally, 10% of students choose to stay awake all night studying instead of sleeping. Research has shown that students who get at least eight hours of sleep the night before an exam generally perform better than those who do not. Despite this, many students continue to rely on last-minute studying because they lack a consistent and personalized way to review what they learn each day. Alara addresses this problem by encouraging students to review and reinforce their learning every day. After each daily learning session, Alara generates personalized quizzes based on both recent and previously learned material, helping students strengthen long-term memory and build lasting understanding. By studying for just 10–20 minutes each day, students can develop consistent study habits and reduce the need for hours of cramming the night before an exam.
+
+Goals:
+Helps students build consistent study habits.
+Improves long term memory through regular review.
+Reduces the amount of cramming the night before an exam.
+Increases student’s confidence with  classroom material.
+Encourages greater classroom engagement by helping students better understand what they are learning.
+
+
+
+
+
+
+Target Users:
+
+The Busy Student:
+Description:
+Doesn’t have time to study because they are busy with extracurriculars and other responsibilities
+Struggles with finding time to study 
+Needs:
+A fast and effective way to review material
+Help organizing what to study
+Efficient study sessions
+What Alara provides:
+Creates quick 10 - 20 minute study sessions
+Suggests what to review based on past quizzes
+Tracks what they learned
+
+The Student that struggles with organization:
+Description:
+A student that takes notes and completes assignments but has a hard time managing everything 
+Often forgets material they learned days earlier
+Needs:
+A place to store all learning information
+Reminders to review topics 
+A way to see progress
+What Alara provides:
+Stores daily learning input
+Builds a learning profile
+Creates personalized quizzes daily
+
+The High Achieving Student:
+Description:
+They want to challenge themselves and want to improve
+Wants to deeply understand class material 
+Needs:
+Feedback on weak areas
+More advanced daily practice
+Better preparation before tests
+What Alara provides:
+Creates customized study plans
+The ability to adjust quiz difficulty
+Identifies areas for improvement
+
+Functional requirements:
+Account setup
+Description: The student is able to create an account and a learning profile
+Requirements:
+Users can create an account
+Users can log in and out
+Users can change their password
+
+Subject setup
+Description: The student is able to set up the subjects they are taking
+Requirements:
+Users can add subjects
+Users can edit or remove subjects
+Users can enter the date of their next test for each subject
+Alara displays the number of days until the next test
+The next time the user opens Alara after the assessment date has passed, Alara prompts them to enter the date of their next assessment and the new unit or topic. 
+
+Home dashboard
+Description: The home page is where students see an overview on what they are learning
+Requirements:
+Displays every subject in their own individual box
+In each subject’s box listed will be the subject, the unit they are currently in, a percentage bar on how far along they are in the unit, and the amount of days until the next test for that subject
+Displays if daily learning info has been submitted and if not, what subjects it needs to be submitted in
+When the subject box is clicked the daily learning entry shows up if the user has not entered their learning submission yet
+Refreshes automatically when new learning data is added
+
+
+
+
+
+
+
+Daily Learning Input
+Description: The Daily Learning Input feature allows students to record and submit what they learned each day. Alara uses this information to understand the student's progress, update their learning profile, and create personalized quizzes and recommendations. 
+Requirements:
+Users can create a daily learning log entry for each subject
+Users can type a summary on what they learned in their own words
+Users can upload class notes, worksheets, homework, or study materials. 
+Users can upload images of handwritten or digital notes. 
+Users can provide information through voice input
+Users can edit or delete previous learning entries. 
+Alara stores the information in the student's learning profile. 
+Alara analyzes each submission to identify important concepts and topics. 
+Alara uses the submitted information to generate a personalized quiz. 
+
+Quiz Generation
+Description: The Quiz Generation feature allows Alara to create personalized quizzes based on the student's daily learning inputs and previous learning history. These quizzes help students review new material, strengthen memory, and identify areas that need additional practice. 
+Requirements:
+Alara automatically generates a quiz after the student submits their daily learning log
+Quiz questions are created using the student's submitted learning materials 
+Quiz questions can include information from both recent and previous lessons
+Users can choose if they want to take the quiz directly after they enter their learning log
+Quizzes can contain different types of questions such as true/false, multiple choice, or matching questions
+The difficulty of quizzes adjusts based on the student's previous performance.
+Alara uses quiz results to determine which topics need additional review and which topics the student already understands. 
+Alara identifies specific topics or questions the student struggles with 
+Alara tracks quiz scores and saves the results to the student profile
+
+
+
+
+
+
+Quiz Results and Feedback
+Description: The Quiz Result and Feedback feature allows students to review their quiz performance, understand mistakes, and identify areas for improvement. Alara analyzes quiz results and provides personalized feedback based on the student’s answers, past performance, and learning progress
+Requirements:
+After completing a quiz, users can view their overall score
+Alara displays which questions the student answered incorrectly
+Alara shows the correct  answer for each incorrectly answered question 
+Alara provides a short explanation on why the correct answer is correct
+Alara shows the topics that need to be reviewed
+Alara compares the student’s current quiz performance with previous quizzes
+Alara displays areas where students have improved over time
+Alara highlights concepts that have been mastered
+Alara recommends what topics the student should focus on next
+Users can select an “Understand Deeper” option for questions or topics they struggled with
+When you press the “Understand Deeper” option Alara explains the concept in simpler words, gives an example, connects it to something the student already knows and then gives a mini practice question.
+Quiz results are saved to the student’s learning profile and used to improve future recommendations.
+Alara creates a review list of the concepts the student should practice again.
+
+AI Memory System
+Description: The AI Memory System allows Alara to continuously store, organize, and analyze information from the student’s learning journey. By remembering daily learning inputs, quiz results, and progress over time, Alara develops a personalized learning profile that allows it to provide more accurate quizzes, recommendations, and study plans.
+Requirements:
+Alara stores information from daily learning inputs in the student’s learning profile.
+Alara stores information from uploaded notes, worksheets, homework, and written summaries
+Alara organizes learning information by subject, unit, topic, and date
+Alara remembers previously learned concepts to include them in future quizzes and reviews
+Alara tracks the student’s quiz scores and performance history
+Alara identifies topics the student understands well and the topics where additional support is necessary
+Alara recognizes patterns in the student’s learning progress
+Alara updates the student’s learning profile after each new submission or quiz
+Alara connects related concepts learned at different times
+Alara retrieves relevant information from the student's learning profile when creating personalized learning experiences. 
+
+Personalized Study Plans
+Description: The Personalized Study Plans feature allows Alara to create customized study schedules based on the student’s learning progress, upcoming assessments, quiz performance, and areas that need improvement. Alara continuously adjusts study plans as the student learns and improves
+Requirements:
+Alara stores information from daily learning inputs in the student’s learning profile.
+Alara stores information from uploaded notes, worksheets, homework, and written summaries
+Alara organizes learning information by subject, unit, topic, and date
+Alara remembers previously learned concepts to include them in future quizzes and reviews
+Alara tracks the student’s quiz scores and performance history
+Alara identifies topics the student understands well and the topics where additional support is necessary
+Alara recognizes patterns in the student’s learning progress
+Alara updates the student’s learning profile after each new submission or quiz
+Alara connects related concepts learned at different times
+Alara retrieves relevant information from the student's learning profile when creating personalized learning experiences. 
+
+Progress Dashboard
+Description: The Progress Dashboard feature allows students to view their learning growth, track their performance, and understand their strengths and areas for improvement. Alara organizes learning data from daily submissions, quiz results, and study activity into an easy to understand overview.
+Requirements:
+Users can view their overall progress
+Alara tracks and displays the current study streak in days
+Alara displays quiz performances over time. 
+Alara provides a summary of the student's learning progress. 
+Alara displays progress for each subject. 
+Alara displays the student's strengths and topics that need additional review.
+Users can view their learning progress over different time periods (such as weekly or monthly).
+
+
+Study for Test
+Description: The Study for Test feature allows students to study for their upcoming tests when they have free time. This helps the student work on their weak points based off of performance in past quizzes. The feature provides personalized review sessions to ensure a solid understanding
+Requirements:
+Users can select the test they would like to study for
+Alara reviews the learning materials related to the selected test
+Alara uses the student's learning profile and quiz results to create a personalized review plan. 
+Alara identifies areas that need more practice
+Alara prioritizes weaker topics while still going over important concepts
+User can study using different methods, including:
+Flashcards
+Practice Quizzes
+Specific Note Review
+Concept explanations
+Review Summaries
+Alara can adjust difficulty level of the review based on student performance
+Alara updates recommendations as the student completes study activities
+Users can choose how much time they have available to study (for example, 15, 30, or 60 minutes).
+Alara estimates the student's readiness for the selected test based on quiz performance and completed review activities.
+Users can mark topics as reviewed after completing a study session.
+Alara updates the study session if new learning is submitted before the test.
+
+
+
+
+
+
+
+
+Ara AI Companion
+Description: The Ara AI Companion feature provides students with a personalized AI companion that supports them throughout their learning journey. Ara encourages students, answers questions, explains concepts, celebrates achievements, and adapts to each student's learning habits over time to create a more engaging and personalized learning experience. 
+Requirements:
+Every user receives an Ara companion when creating an account. 
+Users can customize Ara’s appearance by buying tops, bottoms, and accessories at the shop
+Users can choose Ara’s personality and voice
+Ara provides encouragement after completing daily learning sessions and quizzes.
+Ara celebrates milestones such as study streaks, mastered topics, and completed goals.
+Users can ask Ara questions about subjects they are studying.
+Ara explains concepts in simple, easy-to-understand language.
+Ara can provide examples and analogies to help students better understand difficult topics.
+Ara can answer follow-up questions during explanations.
+Ara reminds students to complete their daily learning submissions.
+Ara suggests reviewing topics that have not been studied recently.
+Ara remembers the student's learning preferences and adapts its responses over time.
+Ara uses information from the student's learning profile to provide personalized guidance.
+
+Shop/Reward
+Description: The Shop and Rewards feature motivates students to build consistent study habits by rewarding them for completing learning activities. Students earn in-game currency by studying, completing quizzes, and maintaining learning streaks, which can be used to customize Ara. 
+Requirements:
+Students earn coins by completing daily learning submissions.
+Students earn additional coins for completing quizzes.
+Students receive bonus rewards for maintaining study streaks.
+Users can spend coins in the Shop.
+The Shop offers outfits, accessories, and cosmetic items for Ara.
+Users can preview items before purchasing them.
+Purchased items remain permanently unlocked.
+Users can equip and change Ara's appearance at any time.

@@ -1,0 +1,99 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f3f7f6;
+  --foreground: #1c1917;
+  --surface: #ffffff;
+  --muted: #78716c;
+  --border: #e7e5e4;
+  --brand: #0f766e;
+  --brand-soft: #ccfbf1;
+  --brand-ink: #134e4a;
+  --accent: #e11d48;
+  --accent-soft: #ffe4e6;
+  --sky: #0284c7;
+  --amber: #d97706;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-brand: var(--brand);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-ink: var(--brand-ink);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-sky: var(--sky);
+  --color-amber: var(--amber);
+  --font-sans: var(--font-dm-sans);
+  --font-display: var(--font-syne);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+.font-display {
+  font-family: var(--font-display), var(--font-sans), system-ui, sans-serif;
+}
+
+/* Soft studio atmosphere — not flat, not purple */
+.app-backdrop {
+  background:
+    radial-gradient(900px 420px at 12% -10%, rgba(45, 212, 191, 0.22), transparent 60%),
+    radial-gradient(700px 380px at 92% 8%, rgba(251, 113, 133, 0.14), transparent 55%),
+    radial-gradient(600px 400px at 70% 100%, rgba(14, 165, 233, 0.1), transparent 50%),
+    linear-gradient(180deg, #f7faf9 0%, #f3f7f6 45%, #eef5f3 100%);
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pop {
+  0% {
+    transform: scale(0.96);
+  }
+  60% {
+    transform: scale(1.02);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.animate-rise {
+  animation: rise-in 0.45s ease-out both;
+}
+
+.animate-rise-delay {
+  animation: rise-in 0.5s ease-out 0.08s both;
+}
+
+.animate-pop:active {
+  animation: pop 0.28s ease-out;
+}
+
+.interactive-tile {
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.interactive-tile:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px -16px rgba(28, 25, 23, 0.28);
+}
