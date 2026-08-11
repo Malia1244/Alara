@@ -84,53 +84,42 @@ POINTS_PER_CORRECT_ANSWER = 10
 # whole portrait for this image instead of overlaying "image" on top of the
 # base mascot, which is what makes hats look properly worn instead of
 # floating in front of her.
-# Hats only work with classic pigtails (default / hair-pigtails) — not custom updos.
-CLASSIC_HAIR_ID = "hair-pigtails"
-CUSTOM_HAIR_IDS = {
-    "hair-space-buns",
-    "hair-halfup-bow",
-    "hair-messy-bun",
-    "hair-side-braid",
-}
-# Starter looks every account owns for free.
-FREE_STARTER_ITEM_IDS = ["hair-pigtails", "top-classic-lavender"]
+# Closet = complete looks only (one full portrait at a time). No mix-and-match
+# combos — keeps the live site small enough for free Vercel hosting.
+CLASSIC_OUTFIT_ID = "top-classic-lavender"
+CLOTHING_SLOTS = ("outfit", "hair", "head", "top", "pants")
+FREE_STARTER_ITEM_IDS = ["top-classic-lavender", "hair-pigtails"]
 
 SHOP_CATALOG = [
-    # Closet = hats, tops, pants, hair only (no sticker accessories).
-    {"id": "hat-leopard", "name": "Leopard Print Bucket Hat", "emoji": "🐆", "image": "hat-leopard.png", "fullImage": "hat-leopard.png", "price": 90, "slot": "head"},
-    {"id": "hat-plaid-brown", "name": "Plaid Bucket Hat", "emoji": "🧢", "image": "hat-plaid-brown.png", "fullImage": "hat-plaid-brown.png", "price": 90, "slot": "head"},
-    {"id": "hat-shadow", "name": "Mystery Bucket Hat", "emoji": "🕵️", "image": "hat-shadow.png", "fullImage": "hat-shadow.png", "price": 90, "slot": "head"},
-    {"id": "hat-frog", "name": "Froggy Bucket Hat", "emoji": "🐸", "image": "hat-frog.png", "fullImage": "hat-frog.png", "price": 110, "slot": "head"},
-    {"id": "hat-cow-pink", "name": "Pink Cow Print Bucket Hat", "emoji": "🐄", "image": "hat-cow-pink.png", "fullImage": "hat-cow-pink.png", "price": 100, "slot": "head"},
-    {"id": "hat-smiley", "name": "Smiley Bucket Hat", "emoji": "😊", "image": "hat-smiley.png", "fullImage": "hat-smiley.png", "price": 100, "slot": "head"},
-    {"id": "hat-doodle", "name": "Doodle Bucket Hat", "emoji": "✏️", "image": "hat-doodle.png", "fullImage": "hat-doodle.png", "price": 80, "slot": "head"},
-    {"id": "hat-frogpatch", "name": "Frog Patch Bucket Hat", "emoji": "🐸", "image": "hat-frogpatch.png", "fullImage": "hat-frogpatch.png", "price": 90, "slot": "head"},
-    {"id": "hat-cow-bw", "name": "Cow Print Bucket Hat", "emoji": "🐄", "image": "hat-cow-bw.png", "fullImage": "hat-cow-bw.png", "price": 100, "slot": "head"},
-    # Tops — each is its own item (not bundled into an outfit). fullImage swaps
-    # Ara's whole portrait so the shirt looks properly worn. Slot "top" is
-    # separate from "head" so a hat and a top can both be equipped at once.
-    {"id": "top-classic-lavender", "name": "Classic Lavender Outfit", "emoji": "💜", "image": "top-classic-lavender.png", "fullImage": "top-classic-lavender.png", "price": 0, "slot": "top"},
-    {"id": "top-stripe-pink", "name": "Pink Stripe Sweater", "emoji": "👚", "image": "top-stripe-pink.png", "fullImage": "top-stripe-pink.png", "price": 110, "slot": "top"},
-    {"id": "top-bow-tee", "name": "Pink Bow Tee", "emoji": "🎀", "image": "top-bow-tee.png", "fullImage": "top-bow-tee.png", "price": 90, "slot": "top"},
-    {"id": "top-cloud-tee", "name": "Cloud & Stars Tee", "emoji": "☁️", "image": "top-cloud-tee.png", "fullImage": "top-cloud-tee.png", "price": 95, "slot": "top"},
-    {"id": "top-bear-cardigan", "name": "Bear Patch Cardigan", "emoji": "🧸", "image": "top-bear-cardigan.png", "fullImage": "top-bear-cardigan.png", "price": 130, "slot": "top"},
-    {"id": "top-ok-hoodie", "name": "OK Hoodie", "emoji": "⭐", "image": "top-ok-hoodie.png", "fullImage": "top-ok-hoodie.png", "price": 120, "slot": "top"},
-    {"id": "top-strawberry-hoodie", "name": "Strawberry Zip Hoodie", "emoji": "🍓", "image": "top-strawberry-hoodie.png", "fullImage": "top-strawberry-hoodie.png", "price": 125, "slot": "top"},
-    {"id": "top-denim-jacket", "name": "Flower Denim Jacket", "emoji": "👖", "image": "top-denim-jacket.png", "fullImage": "top-denim-jacket.png", "price": 140, "slot": "top"},
-    {"id": "top-floral-cardigan", "name": "Floral Cardigan", "emoji": "🌸", "image": "top-floral-cardigan.png", "fullImage": "top-floral-cardigan.png", "price": 135, "slot": "top"},
-    {"id": "top-cherry-tee", "name": "Cherry Tee", "emoji": "🍒", "image": "top-cherry-tee.png", "fullImage": "top-cherry-tee.png", "price": 90, "slot": "top"},
-    {"id": "top-sunny-tee", "name": "Sunny Tee", "emoji": "☀️", "image": "top-sunny-tee.png", "fullImage": "top-sunny-tee.png", "price": 100, "slot": "top"},
-    # Pants — mix with tops via prebaked combos/{top}__{pants}.png portraits
-    {"id": "pants-lavender-cargo", "name": "Lavender Cargo Pants", "emoji": "👖", "image": "pants-lavender-cargo.png", "fullImage": "pants-lavender-cargo.png", "price": 100, "slot": "pants"},
-    {"id": "pants-pink-sweats", "name": "Pink Sweatpants", "emoji": "🧸", "image": "pants-pink-sweats.png", "fullImage": "pants-pink-sweats.png", "price": 95, "slot": "pants"},
-    {"id": "pants-denim", "name": "Heart Patch Jeans", "emoji": "💙", "image": "pants-denim.png", "fullImage": "pants-denim.png", "price": 110, "slot": "pants"},
-    {"id": "pants-plaid-cream", "name": "Cream Plaid Pants", "emoji": "✨", "image": "pants-plaid-cream.png", "fullImage": "pants-plaid-cream.png", "price": 105, "slot": "pants"},
-    # Hair — classic pigtails allow hats; custom updos do not.
-    {"id": "hair-pigtails", "name": "Classic Pigtails", "emoji": "👧", "image": "hair-pigtails.png", "fullImage": "hair-pigtails.png", "price": 0, "slot": "hair"},
-    {"id": "hair-space-buns", "name": "Space Buns", "emoji": "🍡", "image": "hair-space-buns.png", "fullImage": "hair-space-buns.png", "price": 120, "slot": "hair"},
-    {"id": "hair-halfup-bow", "name": "Half-Up Bow", "emoji": "🎀", "image": "hair-halfup-bow.png", "fullImage": "hair-halfup-bow.png", "price": 130, "slot": "hair"},
-    {"id": "hair-messy-bun", "name": "Messy High Bun", "emoji": "💇", "image": "hair-messy-bun.png", "fullImage": "hair-messy-bun.png", "price": 120, "slot": "hair"},
-    {"id": "hair-side-braid", "name": "Loose Side Braid", "emoji": "🪢", "image": "hair-side-braid.png", "fullImage": "hair-side-braid.png", "price": 125, "slot": "hair"},
+    {"id": "top-classic-lavender", "name": "Classic Lavender", "emoji": "💜", "image": "top-classic-lavender.png", "fullImage": "top-classic-lavender.png", "price": 0, "slot": "outfit"},
+    {"id": "top-stripe-pink", "name": "Pink Stripe Sweater", "emoji": "👚", "image": "top-stripe-pink.png", "fullImage": "top-stripe-pink.png", "price": 110, "slot": "outfit"},
+    {"id": "top-bow-tee", "name": "Pink Bow Tee", "emoji": "🎀", "image": "top-bow-tee.png", "fullImage": "top-bow-tee.png", "price": 90, "slot": "outfit"},
+    {"id": "top-cloud-tee", "name": "Cloud and Stars Tee", "emoji": "☁️", "image": "top-cloud-tee.png", "fullImage": "top-cloud-tee.png", "price": 95, "slot": "outfit"},
+    {"id": "top-bear-cardigan", "name": "Bear Patch Cardigan", "emoji": "🧸", "image": "top-bear-cardigan.png", "fullImage": "top-bear-cardigan.png", "price": 130, "slot": "outfit"},
+    {"id": "top-ok-hoodie", "name": "OK Hoodie", "emoji": "⭐", "image": "top-ok-hoodie.png", "fullImage": "top-ok-hoodie.png", "price": 120, "slot": "outfit"},
+    {"id": "top-strawberry-hoodie", "name": "Strawberry Zip Hoodie", "emoji": "🍓", "image": "top-strawberry-hoodie.png", "fullImage": "top-strawberry-hoodie.png", "price": 125, "slot": "outfit"},
+    {"id": "top-denim-jacket", "name": "Flower Denim Jacket", "emoji": "👖", "image": "top-denim-jacket.png", "fullImage": "top-denim-jacket.png", "price": 140, "slot": "outfit"},
+    {"id": "top-floral-cardigan", "name": "Floral Cardigan", "emoji": "🌸", "image": "top-floral-cardigan.png", "fullImage": "top-floral-cardigan.png", "price": 135, "slot": "outfit"},
+    {"id": "top-cherry-tee", "name": "Cherry Tee", "emoji": "🍒", "image": "top-cherry-tee.png", "fullImage": "top-cherry-tee.png", "price": 90, "slot": "outfit"},
+    {"id": "top-sunny-tee", "name": "Sunny Tee", "emoji": "☀️", "image": "top-sunny-tee.png", "fullImage": "top-sunny-tee.png", "price": 100, "slot": "outfit"},
+    {"id": "pants-lavender-cargo", "name": "Lavender Cargo Look", "emoji": "👖", "image": "pants-lavender-cargo.png", "fullImage": "pants-lavender-cargo.png", "price": 100, "slot": "outfit"},
+    {"id": "pants-pink-sweats", "name": "Pink Sweats Look", "emoji": "🧸", "image": "pants-pink-sweats.png", "fullImage": "pants-pink-sweats.png", "price": 95, "slot": "outfit"},
+    {"id": "pants-denim", "name": "Heart Patch Jeans Look", "emoji": "💙", "image": "pants-denim.png", "fullImage": "pants-denim.png", "price": 110, "slot": "outfit"},
+    {"id": "pants-plaid-cream", "name": "Cream Plaid Look", "emoji": "✨", "image": "pants-plaid-cream.png", "fullImage": "pants-plaid-cream.png", "price": 105, "slot": "outfit"},
+    {"id": "hair-pigtails", "name": "Classic Pigtails", "emoji": "👧", "image": "hair-pigtails.png", "fullImage": "hair-pigtails.png", "price": 0, "slot": "outfit"},
+    {"id": "hair-space-buns", "name": "Space Buns", "emoji": "🍡", "image": "hair-space-buns.png", "fullImage": "hair-space-buns.png", "price": 120, "slot": "outfit"},
+    {"id": "hair-halfup-bow", "name": "Half-Up Bow", "emoji": "🎀", "image": "hair-halfup-bow.png", "fullImage": "hair-halfup-bow.png", "price": 130, "slot": "outfit"},
+    {"id": "hair-messy-bun", "name": "Messy High Bun", "emoji": "💇", "image": "hair-messy-bun.png", "fullImage": "hair-messy-bun.png", "price": 120, "slot": "outfit"},
+    {"id": "hair-side-braid", "name": "Loose Side Braid", "emoji": "🪢", "image": "hair-side-braid.png", "fullImage": "hair-side-braid.png", "price": 125, "slot": "outfit"},
+    {"id": "hat-leopard", "name": "Leopard Bucket Hat Look", "emoji": "🐆", "image": "hat-leopard.png", "fullImage": "hat-leopard.png", "price": 90, "slot": "outfit"},
+    {"id": "hat-plaid-brown", "name": "Plaid Bucket Hat Look", "emoji": "🧢", "image": "hat-plaid-brown.png", "fullImage": "hat-plaid-brown.png", "price": 90, "slot": "outfit"},
+    {"id": "hat-shadow", "name": "Mystery Bucket Hat Look", "emoji": "🕵️", "image": "hat-shadow.png", "fullImage": "hat-shadow.png", "price": 90, "slot": "outfit"},
+    {"id": "hat-frog", "name": "Froggy Bucket Hat Look", "emoji": "🐸", "image": "hat-frog.png", "fullImage": "hat-frog.png", "price": 110, "slot": "outfit"},
+    {"id": "hat-cow-pink", "name": "Pink Cow Hat Look", "emoji": "🐄", "image": "hat-cow-pink.png", "fullImage": "hat-cow-pink.png", "price": 100, "slot": "outfit"},
+    {"id": "hat-smiley", "name": "Smiley Bucket Hat Look", "emoji": "😊", "image": "hat-smiley.png", "fullImage": "hat-smiley.png", "price": 100, "slot": "outfit"},
+    {"id": "hat-doodle", "name": "Doodle Bucket Hat Look", "emoji": "✏️", "image": "hat-doodle.png", "fullImage": "hat-doodle.png", "price": 80, "slot": "outfit"},
+    {"id": "hat-frogpatch", "name": "Frog Patch Hat Look", "emoji": "🐸", "image": "hat-frogpatch.png", "fullImage": "hat-frogpatch.png", "price": 90, "slot": "outfit"},
+    {"id": "hat-cow-bw", "name": "Cow Print Hat Look", "emoji": "🐄", "image": "hat-cow-bw.png", "fullImage": "hat-cow-bw.png", "price": 100, "slot": "outfit"},
 ]
 
 SHOP_ITEMS_BY_ID = {item["id"]: item for item in SHOP_CATALOG}
@@ -484,14 +473,33 @@ def _equip_slot(supabase: Client, user_id: str, slot: str, item_id: str) -> None
     ).execute()
 
 
-def ensure_classic_hair_equipped(
+def _clear_clothing_slots(supabase: Client, user_id: str) -> None:
+    """Only one complete look can be worn at a time."""
+    for slot in CLOTHING_SLOTS:
+        _unequip_slot(supabase, user_id, slot)
+
+
+def _equip_complete_look(supabase: Client, user_id: str, item_id: str) -> None:
+    _clear_clothing_slots(supabase, user_id)
+    _equip_slot(supabase, user_id, "outfit", item_id)
+
+
+def ensure_default_outfit(
     supabase: Client, user_id: str, equipped: dict
 ) -> dict:
-    """Default hair is Classic Pigtails so it's always a real equippable slot."""
-    if equipped.get("hair"):
+    """Default look is Classic Lavender. Migrates old hair/top/pants equips."""
+    if equipped.get("outfit"):
         return equipped
+
+    # Prefer any legacy clothing slot as the active complete look.
+    for slot in ("top", "hair", "pants", "head"):
+        legacy_id = equipped.get(slot)
+        if legacy_id and legacy_id in SHOP_ITEMS_BY_ID:
+            _equip_complete_look(supabase, user_id, legacy_id)
+            return get_equipped_map(supabase, user_id)
+
     ensure_starter_items(supabase, user_id)
-    _equip_slot(supabase, user_id, "hair", CLASSIC_HAIR_ID)
+    _equip_complete_look(supabase, user_id, CLASSIC_OUTFIT_ID)
     return get_equipped_map(supabase, user_id)
 
 
@@ -523,11 +531,7 @@ def build_shop_state(
     stats = stats or get_or_create_stats_row(supabase, user_id)
     owned_item_ids = owned_item_ids or ensure_starter_items(supabase, user_id)
     equipped = equipped or get_equipped_map(supabase, user_id)
-    equipped = ensure_classic_hair_equipped(supabase, user_id, equipped)
-    # Custom updos can't wear hats — clear any leftover hat.
-    if equipped.get("hair") in CUSTOM_HAIR_IDS and equipped.get("head"):
-        _unequip_slot(supabase, user_id, "head")
-        equipped = get_equipped_map(supabase, user_id)
+    equipped = ensure_default_outfit(supabase, user_id, equipped)
     return ShopState(
         points=stats["points"],
         owned_item_ids=owned_item_ids,
@@ -1315,20 +1319,14 @@ def purchase_item(purchase: PurchaseRequest, user_id: CurrentUserId):
     ).execute()
     owned_item_ids.append(purchase.item_id)
 
-    # Auto-equip a freshly bought item if that slot is empty — or always
-    # equip free starters so claiming Classic Pigtails switches hair immediately.
+    # Auto-equip bought looks (or free starters) as the active complete outfit.
     equipped = get_equipped_map(supabase, user_id)
     should_auto_equip = (
-        item["id"] in FREE_STARTER_ITEM_IDS or item["slot"] not in equipped
+        item["id"] in FREE_STARTER_ITEM_IDS or "outfit" not in equipped
     )
     if should_auto_equip:
-        if item["id"] in CUSTOM_HAIR_IDS and equipped.get("head"):
-            _unequip_slot(supabase, user_id, "head")
-        if item["slot"] == "head" and equipped.get("hair") in CUSTOM_HAIR_IDS:
-            pass  # don't auto-equip hats over custom hair
-        else:
-            _equip_slot(supabase, user_id, item["slot"], item["id"])
-            equipped = get_equipped_map(supabase, user_id)
+        _equip_complete_look(supabase, user_id, item["id"])
+        equipped = get_equipped_map(supabase, user_id)
 
     stats = get_or_create_stats_row(supabase, user_id)
     stats = {**stats, "points": new_points}
@@ -1355,21 +1353,7 @@ def equip_item(equip: EquipRequest, user_id: CurrentUserId):
     ):
         raise HTTPException(status_code=400, detail="You don't own this item yet")
 
-    equipped = get_equipped_map(supabase, user_id)
-    current_hair = equipped.get("hair")
-
-    # Hats only with classic pigtails (or no custom updo equipped).
-    if item["slot"] == "head" and current_hair in CUSTOM_HAIR_IDS:
-        raise HTTPException(
-            status_code=400,
-            detail="Hats only work with Classic Pigtails. Switch hair first.",
-        )
-
-    # Switching to a custom updo removes any hat.
-    if item["id"] in CUSTOM_HAIR_IDS and equipped.get("head"):
-        _unequip_slot(supabase, user_id, "head")
-
-    _equip_slot(supabase, user_id, item["slot"], item["id"])
+    _equip_complete_look(supabase, user_id, item["id"])
 
     return build_shop_state(
         supabase, user_id, owned_item_ids=owned_item_ids
@@ -1383,9 +1367,9 @@ def unequip_item(unequip: UnequipRequest, user_id: CurrentUserId):
 
     owned_item_ids = ensure_starter_items(supabase, user_id)
     equipped = get_equipped_map(supabase, user_id)
-    # Taking off hair falls back to Classic Pigtails (always equippable).
-    if unequip.slot == "hair":
-        equipped = ensure_classic_hair_equipped(supabase, user_id, equipped)
+    # Taking off the active look falls back to Classic Lavender.
+    if unequip.slot in CLOTHING_SLOTS:
+        equipped = ensure_default_outfit(supabase, user_id, equipped)
 
     return build_shop_state(
         supabase,

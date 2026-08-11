@@ -13,24 +13,6 @@ import {
   type ShopState,
 } from "@/lib/api";
 
-const HAT_PIGTAILS_NOTICE = "Hats only work with pigtails.";
-
-const SLOT_LABELS: Record<string, string> = {
-  hair: "Hair",
-  head: "Hats",
-  top: "Tops",
-  pants: "Pants",
-};
-
-const SLOT_ORDER = ["hair", "head", "top", "pants"];
-
-const CUSTOM_HAIR_IDS = new Set([
-  "hair-space-buns",
-  "hair-halfup-bow",
-  "hair-messy-bun",
-  "hair-side-braid",
-]);
-
 const FREE_STARTER_IDS = new Set(["hair-pigtails", "top-classic-lavender"]);
 
 export default function AraPage() {
@@ -65,40 +47,13 @@ export default function AraPage() {
     return shop.items.filter((item) => owned.has(item.id));
   }, [shop]);
 
-  const ownedBySlot = useMemo(() => {
-    const groups = new Map<string, ShopItem[]>();
-    for (const item of ownedItems) {
-      const list = groups.get(item.slot) ?? [];
-      list.push(item);
-      groups.set(item.slot, list);
-    }
-    return SLOT_ORDER.filter((slot) => groups.has(slot)).map(
-      (slot) => [slot, groups.get(slot)!] as const
-    );
-  }, [ownedItems]);
-
   async function handleEquip(itemId: string) {
-    const item = shop?.items.find((i) => i.id === itemId);
-    if (
-      item?.slot === "head" &&
-      CUSTOM_HAIR_IDS.has(shop?.equipped.hair ?? "")
-    ) {
-      setNotice(HAT_PIGTAILS_NOTICE);
-      return;
-    }
-
     setBusyId(itemId);
     setError(null);
     try {
       setShop(await equipShopItem(itemId));
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Couldn't equip that.";
-      if (message.toLowerCase().includes("pigtail")) {
-        setNotice(HAT_PIGTAILS_NOTICE);
-      } else {
-        setError(message);
-      }
+      setError(err instanceof Error ? err.message : "Couldn't equip that.");
     } finally {
       setBusyId(null);
     }
@@ -129,8 +84,7 @@ export default function AraPage() {
               Dressing room
             </h1>
             <p className="mt-1 max-w-md text-sm leading-relaxed text-muted">
-              Everything you own for Ara — try looks on, take them off, then open
-              the shop for something new.
+              Pick one complete look for Ara. Buy more in the shop.
             </p>
           </div>
           <Link
@@ -154,7 +108,7 @@ export default function AraPage() {
               ? "Loading closet…"
               : ownedItems.length === 0
                 ? "Closet is empty — shop for outfits"
-                : "Tap an item below to wear or take off"}
+                : "Tap a look below to wear it"}
           </p>
         </section>
 
@@ -174,7 +128,7 @@ export default function AraPage() {
               Nothing in the closet yet
             </p>
             <p className="mt-1 text-sm text-muted">
-              Earn points from quizzes, then buy hats and tops in the shop.
+              Earn points from quizzes, then buy looks in the shop.
             </p>
             <Link
               href="/shop"
@@ -185,79 +139,58 @@ export default function AraPage() {
           </div>
         )}
 
-        {shop &&
-          ownedBySlot.map(([slot, items]) => (
-            <section key={slot} className="flex flex-col gap-3">
-              <h2 className="text-xs font-bold uppercase tracking-[0.14em] text-muted">
-                {SLOT_LABELS[slot] ?? slot}
-              </h2>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-                {items.map((item) => {
-                  const isEquipped = shop.equipped[item.slot] === item.id;
-                  const isBusy = busyId === item.id;
-                  const hatBlockedByHair =
-                    item.slot === "head" &&
-                    CUSTOM_HAIR_IDS.has(shop.equipped.hair ?? "");
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      disabled={isBusy}
-                      onClick={() => {
-                        if (hatBlockedByHair && !isEquipped) {
-                          setNotice(HAT_PIGTAILS_NOTICE);
-                          return;
-                        }
-                        if (isEquipped && item.id === "hair-pigtails") {
-                          return;
-                        }
-                        void (isEquipped
-                          ? handleUnequip(item.slot, item.id)
-                          : handleEquip(item.id));
-                      }}
-                      className={`interactive-tile flex flex-col items-center gap-2 rounded-2xl border p-4 text-center transition disabled:opacity-60 ${
+        {shop && ownedItems.length > 0 && (
+          <section className="flex flex-col gap-3">
+            <h2 className="text-xs font-bold uppercase tracking-[0.14em] text-muted">
+              Your looks
+            </h2>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+              {ownedItems.map((item) => {
+                const isEquipped = shop.equipped.outfit === item.id;
+                const isBusy = busyId === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    disabled={isBusy}
+                    onClick={() => {
+                      void (isEquipped
+                        ? handleUnequip(item.slot, item.id)
+                        : handleEquip(item.id));
+                    }}
+                    className={`interactive-tile flex flex-col items-center gap-2 rounded-2xl border p-4 text-center transition disabled:opacity-60 ${
+                      isEquipped
+                        ? "border-brand bg-brand-soft/70"
+                        : "border-border bg-surface hover:border-brand/40"
+                    }`}
+                  >
+                    {item.image ? (
+                      <Image
+                        src={`/shop-items/${item.image}`}
+                        alt=""
+                        width={48}
+                        height={48}
+                        className="h-12 w-12 object-contain"
+                      />
+                    ) : (
+                      <span className="text-3xl">{item.emoji}</span>
+                    )}
+                    <p className="text-sm font-semibold text-ink">{item.name}</p>
+                    <span
+                      className={`rounded-xl px-3 py-1 text-[11px] font-semibold ${
                         isEquipped
-                          ? "border-brand bg-brand-soft/70"
-                          : "border-border bg-surface hover:border-brand/40"
+                          ? "bg-brand text-white"
+                          : "bg-stone-100 text-stone-600"
                       }`}
                     >
-                      {item.image ? (
-                        <Image
-                          src={`/shop-items/${item.image}`}
-                          alt=""
-                          width={48}
-                          height={48}
-                          className="h-12 w-12 object-contain"
-                        />
-                      ) : (
-                        <span className="text-3xl">{item.emoji}</span>
-                      )}
-                      <p className="text-sm font-semibold text-ink">
-                        {item.name}
-                      </p>
-                      <span
-                        className={`rounded-xl px-3 py-1 text-[11px] font-semibold ${
-                          isEquipped
-                            ? "bg-brand text-white"
-                            : "bg-stone-100 text-stone-600"
-                        }`}
-                      >
-                        {isBusy
-                          ? "…"
-                          : isEquipped
-                            ? item.id === "hair-pigtails"
-                              ? "Wearing"
-                              : "Wearing · tap off"
-                            : hatBlockedByHair
-                              ? "Needs pigtails"
-                              : "Tap to wear"}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </section>
-          ))}
+                      {isBusy ? "…" : isEquipped ? "Wearing · tap off" : "Wear"}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        )}
       </main>
     </div>
   );

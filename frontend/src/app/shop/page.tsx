@@ -13,38 +13,7 @@ import {
   type ShopState,
 } from "@/lib/api";
 
-const HAT_PIGTAILS_NOTICE = "Hats only work with pigtails.";
-
-const SLOT_LABELS: Record<string, string> = {
-  hair: "Hair",
-  head: "Hats",
-  top: "Tops",
-  pants: "Pants",
-};
-
-const SLOT_ORDER = ["hair", "head", "top", "pants"];
-
-const CUSTOM_HAIR_IDS = new Set([
-  "hair-space-buns",
-  "hair-halfup-bow",
-  "hair-messy-bun",
-  "hair-side-braid",
-]);
-
 const FREE_STARTER_IDS = new Set(["hair-pigtails", "top-classic-lavender"]);
-
-function groupBySlot(items: ShopItem[]): [string, ShopItem[]][] {
-  const groups = new Map<string, ShopItem[]>();
-  for (const item of items) {
-    const list = groups.get(item.slot) ?? [];
-    list.push(item);
-    groups.set(item.slot, list);
-  }
-  return SLOT_ORDER.filter((slot) => groups.has(slot)).map((slot) => [
-    slot,
-    groups.get(slot)!,
-  ]);
-}
 
 export default function ShopPage() {
   const [shop, setShop] = useState<ShopState | null>(null);
@@ -86,28 +55,13 @@ export default function ShopPage() {
   }
 
   async function handleEquip(itemId: string) {
-    const item = shop?.items.find((i) => i.id === itemId);
-    if (
-      item?.slot === "head" &&
-      CUSTOM_HAIR_IDS.has(shop?.equipped.hair ?? "")
-    ) {
-      setNotice(HAT_PIGTAILS_NOTICE);
-      return;
-    }
-
     setBusyId(itemId);
     setError(null);
     try {
       const updated = await equipShopItem(itemId);
       setShop(updated);
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Couldn't equip that item.";
-      if (message.toLowerCase().includes("pigtail")) {
-        setNotice(HAT_PIGTAILS_NOTICE);
-      } else {
-        setError(message);
-      }
+      setError(err instanceof Error ? err.message : "Couldn't equip that item.");
     } finally {
       setBusyId(null);
     }
@@ -126,6 +80,8 @@ export default function ShopPage() {
     }
   }
 
+  const outfits = shop?.items ?? [];
+
   return (
     <div className="flex flex-1 justify-center px-4 py-10 sm:px-8 sm:py-14">
       <NoticeBanner message={notice} onClose={() => setNotice(null)} />
@@ -139,7 +95,7 @@ export default function ShopPage() {
               Shop
             </h1>
             <p className="mt-1 text-sm leading-relaxed text-muted">
-              Spend quiz points on looks for Ara.
+              Spend quiz points on ready-made looks for Ara.
             </p>
           </div>
 
@@ -158,8 +114,8 @@ export default function ShopPage() {
         </div>
 
         <p className="rounded-xl border border-border bg-brand-soft/50 px-4 py-3 text-xs font-medium text-brand-ink">
-          Mix hair with tops and pants freely. Hats only work with Classic
-          Pigtails. Classic Pigtails + Classic Lavender Outfit are free.
+          Pick one complete look at a time. Classic Lavender and Classic
+          Pigtails are free.
         </p>
 
         {error && <p className="text-center text-sm text-rose-600">{error}</p>}
@@ -171,116 +127,84 @@ export default function ShopPage() {
           </div>
         )}
 
-        {shop &&
-          groupBySlot(shop.items).map(([slot, items]) => (
-            <section key={slot} className="flex flex-col gap-3">
-              <h2 className="text-xs font-bold uppercase tracking-[0.14em] text-muted">
-                {SLOT_LABELS[slot] ?? slot}
-              </h2>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                {items.map((item) => {
-                  const isOwned =
-                    shop.owned_item_ids.includes(item.id) ||
-                    FREE_STARTER_IDS.has(item.id);
-                  const isEquipped = shop.equipped[item.slot] === item.id;
-                  const canAfford = shop.points >= item.price;
-                  const isBusy = busyId === item.id;
-                  const hatBlockedByHair =
-                    item.slot === "head" &&
-                    CUSTOM_HAIR_IDS.has(shop.equipped.hair ?? "");
+        {shop && (
+          <section className="flex flex-col gap-3">
+            <h2 className="text-xs font-bold uppercase tracking-[0.14em] text-muted">
+              Outfits
+            </h2>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {outfits.map((item: ShopItem) => {
+                const isOwned =
+                  shop.owned_item_ids.includes(item.id) ||
+                  FREE_STARTER_IDS.has(item.id);
+                const isEquipped = shop.equipped.outfit === item.id;
+                const canAfford = shop.points >= item.price;
+                const isBusy = busyId === item.id;
 
-                  return (
-                    <div
-                      key={item.id}
-                      className={`interactive-tile flex flex-col items-center gap-2 rounded-2xl border p-5 text-center ${
-                        isEquipped
-                          ? "border-brand bg-brand-soft/70"
-                          : isOwned
-                            ? "border-border bg-surface"
-                            : "border-border bg-surface"
-                      }`}
-                    >
-                      {item.image ? (
-                        <Image
-                          src={`/shop-items/${item.image}`}
-                          alt=""
-                          width={48}
-                          height={48}
-                          className={`h-12 w-12 object-contain ${!isOwned && !canAfford ? "opacity-40" : ""}`}
-                        />
-                      ) : (
-                        <span
-                          className={`text-3xl ${!isOwned && !canAfford ? "opacity-40" : ""}`}
-                        >
-                          {item.emoji}
-                        </span>
-                      )}
-                      <p className="text-sm font-semibold text-ink">
-                        {item.name}
-                      </p>
-
-                      {isEquipped ? (
-                        <div className="mt-1 flex flex-col items-center gap-1">
-                          <span className="rounded-xl bg-brand px-3 py-1 text-xs font-semibold text-white">
-                            Equipped
-                          </span>
-                          {item.id !== "hair-pigtails" && (
-                            <button
-                              type="button"
-                              onClick={() => handleUnequip(item.slot, item.id)}
-                              disabled={isBusy}
-                              className="text-[11px] font-semibold text-muted underline-offset-2 hover:text-brand hover:underline disabled:opacity-50"
-                            >
-                              Take off
-                            </button>
-                          )}
-                        </div>
-                      ) : hatBlockedByHair ? (
+                return (
+                  <div
+                    key={item.id}
+                    className={`interactive-tile flex flex-col items-center gap-2 rounded-2xl border p-5 text-center ${
+                      isEquipped
+                        ? "border-brand bg-brand-soft/70"
+                        : "border-border bg-surface"
+                    }`}
+                  >
+                    {item.image ? (
+                      <Image
+                        src={`/shop-items/${item.image}`}
+                        alt=""
+                        width={48}
+                        height={48}
+                        className={`h-12 w-12 object-contain ${!isOwned && !canAfford ? "opacity-40" : ""}`}
+                      />
+                    ) : (
+                      <span
+                        className={`text-3xl ${!isOwned && !canAfford ? "opacity-40" : ""}`}
+                      >
+                        {item.emoji}
+                      </span>
+                    )}
+                    <p className="text-sm font-semibold text-ink">{item.name}</p>
+                    <p className="text-xs text-muted">
+                      {item.price === 0 ? "Free" : `${item.price} pts`}
+                    </p>
+                    {isOwned ? (
+                      isEquipped ? (
                         <button
                           type="button"
-                          onClick={() => setNotice(HAT_PIGTAILS_NOTICE)}
-                          className="mt-1 rounded-xl bg-amber-50 px-3 py-1.5 text-[11px] font-semibold leading-snug text-amber-800 transition-colors hover:bg-amber-100"
+                          disabled={isBusy}
+                          onClick={() => handleUnequip(item.slot, item.id)}
+                          className="mt-1 rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-muted hover:bg-panel"
                         >
-                          Needs pigtails
+                          {isBusy ? "…" : "Wearing"}
                         </button>
-                      ) : isOwned ? (
+                      ) : (
                         <button
                           type="button"
+                          disabled={isBusy}
                           onClick={() => handleEquip(item.id)}
-                          disabled={isBusy}
-                          className="mt-1 rounded-xl bg-brand-soft px-4 py-1.5 text-xs font-semibold text-brand transition-colors hover:bg-teal-100 disabled:cursor-not-allowed disabled:opacity-60"
+                          className="mt-1 rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-ink"
                         >
-                          {isBusy ? "Equipping..." : "Equip"}
+                          {isBusy ? "…" : "Wear"}
                         </button>
-                      ) : item.price === 0 ? (
-                        <button
-                          type="button"
-                          onClick={() => handleBuy(item.id)}
-                          disabled={isBusy}
-                          className="mt-1 rounded-xl bg-brand px-4 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-teal-700 disabled:opacity-60"
-                        >
-                          {isBusy ? "…" : "Free"}
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => handleBuy(item.id)}
-                          disabled={!canAfford || isBusy}
-                          className="mt-1 rounded-xl bg-brand px-4 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-teal-700 disabled:cursor-not-allowed disabled:bg-stone-200 disabled:text-stone-400"
-                        >
-                          {isBusy ? "Buying..." : `${item.price} pts`}
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-          ))}
-
-        <p className="text-center text-xs text-muted">
-          Everything you equip shows up on Ara across the app.
-        </p>
+                      )
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={isBusy || !canAfford}
+                        onClick={() => handleBuy(item.id)}
+                        className="mt-1 rounded-lg bg-ink px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
+                      >
+                        {isBusy ? "…" : canAfford ? "Buy" : "Need points"}
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
       </main>
     </div>
   );

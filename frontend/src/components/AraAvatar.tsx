@@ -143,7 +143,6 @@ export default function AraAvatar({
   const [equippedIds, setEquippedIds] = useState<string[]>([]);
   const [itemsById, setItemsById] = useState<Record<string, ShopItem>>({});
   const [srcIndex, setSrcIndex] = useState(0);
-  const [hatOverlayFallback, setHatOverlayFallback] = useState(false);
 
   useEffect(() => {
     if (!showOutfits) return;
@@ -181,97 +180,24 @@ export default function AraAvatar({
     ? equippedIds.map((id) => itemsById[id]).filter(Boolean)
     : [];
 
-  const topItem = equippedItems.find(
-    (item) => item?.slot === "top" && item.fullImage
-  );
-  const pantsItem = equippedItems.find(
-    (item) => item?.slot === "pants" && item.fullImage
-  );
-  const headItem = equippedItems.find(
-    (item) => item?.slot === "head" && item.fullImage
-  );
-  const hairItem = equippedItems.find(
-    (item) => item?.slot === "hair" && item.fullImage
-  );
-
-  const topId = topItem?.id;
-  const pantsId = pantsItem?.id;
-  const hatId = headItem?.id;
-  const hairId = hairItem?.id;
-  const hasBakedClothes = Boolean(topItem || pantsItem || headItem || hairItem);
-
-  // Outfit portraits are wave-only. Prefer clothes over pose art everywhere
-  // (including Teach Ara sit poses) so equipped outfits show sitewide.
-  const useOutfitBody = hasBakedClothes;
+  // One complete look at a time (no mix-and-match combos).
+  const lookItem =
+    equippedItems.find((item) => item?.slot === "outfit" && item.fullImage) ??
+    equippedItems.find((item) => item?.slot === "top" && item.fullImage) ??
+    equippedItems.find((item) => item?.slot === "hair" && item.fullImage) ??
+    equippedItems.find((item) => item?.slot === "pants" && item.fullImage) ??
+    equippedItems.find((item) => item?.slot === "head" && item.fullImage) ??
+    null;
 
   const srcCandidates: string[] = [];
-  const bakedIds = new Set<string>();
-
-  if (useOutfitBody) {
-    // Custom updos mix with tops/pants via prebaked hair__top__pants portraits.
-    // Hats stay classic-pigtails-only (blocked separately).
-    const isCustomHair = Boolean(hairId && hairId !== "hair-pigtails");
-
-    if (isCustomHair && hairId) {
-      if (topId && pantsId) {
-        srcCandidates.push(
-          `/outfits/combos/${hairId}__${topId}__${pantsId}.png`
-        );
-      }
-      if (topId && !pantsId) {
-        srcCandidates.push(`/outfits/combos/${hairId}__${topId}.png`);
-      }
-      if (pantsId && !topId) {
-        srcCandidates.push(`/outfits/combos/${hairId}__${pantsId}.png`);
-      }
-      // Fallbacks when combo art is missing (e.g. Vercel size-limited deploys).
-      if (topItem?.fullImage) {
-        srcCandidates.push(`/outfits/${topItem.fullImage}`);
-      }
-      if (pantsItem?.fullImage) {
-        srcCandidates.push(`/outfits/${pantsItem.fullImage}`);
-      }
-      if (hairItem?.fullImage) {
-        srcCandidates.push(`/outfits/${hairItem.fullImage}`);
-      }
-    } else {
-      // Classic pigtails (or no hair item): tops + pants + hats all mix.
-      if (topId && pantsId && hatId) {
-        srcCandidates.push(
-          `/outfits/combos/${topId}__${pantsId}__${hatId}.png`
-        );
-      }
-      if (pantsId && hatId && !topId) {
-        srcCandidates.push(`/outfits/combos/${pantsId}__${hatId}.png`);
-      }
-      if (topId && pantsId) {
-        srcCandidates.push(`/outfits/combos/${topId}__${pantsId}.png`);
-      }
-      if (topId && hatId && !pantsId) {
-        srcCandidates.push(`/outfits/combos/${topId}__${hatId}.png`);
-      }
-      // Always keep single-piece portraits as fallbacks after combos.
-      if (topItem?.fullImage) {
-        srcCandidates.push(`/outfits/${topItem.fullImage}`);
-      }
-      if (pantsItem?.fullImage) {
-        srcCandidates.push(`/outfits/${pantsItem.fullImage}`);
-      }
-      if (headItem?.fullImage) {
-        srcCandidates.push(`/outfits/${headItem.fullImage}`);
-      }
-      if (hairItem?.fullImage) {
-        srcCandidates.push(`/outfits/${hairItem.fullImage}`);
-      }
-    }
+  if (lookItem?.fullImage) {
+    srcCandidates.push(`/outfits/${lookItem.fullImage}`);
   }
-
   srcCandidates.push(ARA_POSE_SRC[pose]);
 
   const candidateKey = srcCandidates.join("|");
   useEffect(() => {
     setSrcIndex(0);
-    setHatOverlayFallback(false);
   }, [candidateKey]);
 
   const motionClass =
@@ -283,51 +209,13 @@ export default function AraAvatar({
 
   const safeIndex = Math.min(srcIndex, srcCandidates.length - 1);
   const baseSrc = srcCandidates[safeIndex] ?? ARA_POSE_SRC[pose];
-  const showingOutfitPortrait =
-    useOutfitBody && baseSrc !== ARA_POSE_SRC[pose];
-
-  if (showingOutfitPortrait) {
-    const chosen = baseSrc;
-    const isComboPath = chosen.includes("/outfits/combos/");
-    const isSinglePath = chosen.includes("/outfits/") && !isComboPath;
-
-    if (isComboPath) {
-      if (hairId && chosen.includes(hairId)) bakedIds.add(hairId);
-      if (topId && chosen.includes(topId)) bakedIds.add(topId);
-      if (pantsId && chosen.includes(pantsId)) bakedIds.add(pantsId);
-      if (hatId && chosen.includes(hatId)) bakedIds.add(hatId);
-    } else if (isSinglePath) {
-      if (topItem?.fullImage && chosen.endsWith(`/${topItem.fullImage}`)) {
-        bakedIds.add(topId!);
-      }
-      if (pantsItem?.fullImage && chosen.endsWith(`/${pantsItem.fullImage}`)) {
-        bakedIds.add(pantsId!);
-      }
-      if (headItem?.fullImage && chosen.endsWith(`/${headItem.fullImage}`)) {
-        bakedIds.add(hatId!);
-      }
-      if (hairItem?.fullImage && chosen.endsWith(`/${hairItem.fullImage}`)) {
-        bakedIds.add(hairId!);
-      }
-    }
-  }
-
-  // Hats only layer with classic pigtails — never on custom updos.
-  const wearingCustomHair = Boolean(hairId && hairId !== "hair-pigtails");
-  const showHatOverlay =
-    Boolean(hatId && headItem && !bakedIds.has(hatId)) &&
-    showingOutfitPortrait &&
-    !wearingCustomHair;
 
   const stickerItems = showOutfits
     ? equippedIds
         .map((id) => {
           const item = itemsById[id];
-          if (!item || bakedIds.has(id)) return null;
-          // Full-body hat / hair portraits are handled by bake / hat overlay.
-          if (item.fullImage && (item.slot === "head" || item.slot === "hair")) {
-            return null;
-          }
+          if (!item || item.id === lookItem?.id) return null;
+          // Complete looks already replace the whole portrait.
           if (item.fullImage) return null;
           const position =
             OUTFIT_POSITIONS[id] ?? DEFAULT_SLOT_POSITIONS[item.slot ?? ""];
@@ -373,27 +261,6 @@ export default function AraAvatar({
           setSrcIndex((i) => (i + 1 < srcCandidates.length ? i + 1 : i));
         }}
       />
-
-      {showHatOverlay && headItem && hatId && (
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 z-[4] select-none"
-        >
-          <Image
-            src={
-              hatOverlayFallback
-                ? `/overlays/${hatId}.png`
-                : `/overlays/onhead/${hatId}.png`
-            }
-            alt=""
-            fill
-            sizes={`${size}px`}
-            className="object-contain"
-            unoptimized
-            onError={() => setHatOverlayFallback(true)}
-          />
-        </div>
-      )}
 
       {front.map(({ id, item, position }) => (
         <StickerOverlay
