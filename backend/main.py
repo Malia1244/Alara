@@ -137,9 +137,16 @@ SHOP_ITEMS_BY_ID = {item["id"]: item for item in SHOP_CATALOG}
 
 app = FastAPI(title="Alara API")
 
+# Comma-separated list, e.g. "http://localhost:3000,https://alara.vercel.app"
+_cors_origins = [
+    origin.strip()
+    for origin in os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")
+    if origin.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
