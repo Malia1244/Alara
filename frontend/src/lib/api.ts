@@ -60,6 +60,8 @@ export type ShopItem = {
   fullImage: string | null;
   price: number;
   slot: string;
+  /** Hair · top · bottoms · shoes breakdown for complete looks */
+  pieces?: string | null;
 };
 
 export type ShopState = {

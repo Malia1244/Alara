@@ -84,42 +84,177 @@ POINTS_PER_CORRECT_ANSWER = 10
 # whole portrait for this image instead of overlaying "image" on top of the
 # base mascot, which is what makes hats look properly worn instead of
 # floating in front of her.
-# Closet = complete looks only (one full portrait at a time). No mix-and-match
-# combos — keeps the live site small enough for free Vercel hosting.
-CLASSIC_OUTFIT_ID = "top-classic-lavender"
+# Closet = named complete looks only (hair + top + bottoms + shoes baked into
+# one portrait). A small curated set lives in public/outfits/looks/ so the
+# giant combos/ folder can stay off free Vercel deploys.
+CLASSIC_OUTFIT_ID = "look-lavender-soft"
 CLOTHING_SLOTS = ("outfit", "hair", "head", "top", "pants")
-FREE_STARTER_ITEM_IDS = ["top-classic-lavender", "hair-pigtails"]
+FREE_STARTER_ITEM_IDS = ["look-lavender-soft"]
 
+# "pieces" is shown in the shop as the outfit breakdown (not mix-and-match).
 SHOP_CATALOG = [
-    {"id": "top-classic-lavender", "name": "Classic Lavender", "emoji": "💜", "image": "top-classic-lavender.png", "fullImage": "top-classic-lavender.png", "price": 0, "slot": "outfit"},
-    {"id": "top-stripe-pink", "name": "Pink Stripe Sweater", "emoji": "👚", "image": "top-stripe-pink.png", "fullImage": "top-stripe-pink.png", "price": 110, "slot": "outfit"},
-    {"id": "top-bow-tee", "name": "Pink Bow Tee", "emoji": "🎀", "image": "top-bow-tee.png", "fullImage": "top-bow-tee.png", "price": 90, "slot": "outfit"},
-    {"id": "top-cloud-tee", "name": "Cloud and Stars Tee", "emoji": "☁️", "image": "top-cloud-tee.png", "fullImage": "top-cloud-tee.png", "price": 95, "slot": "outfit"},
-    {"id": "top-bear-cardigan", "name": "Bear Patch Cardigan", "emoji": "🧸", "image": "top-bear-cardigan.png", "fullImage": "top-bear-cardigan.png", "price": 130, "slot": "outfit"},
-    {"id": "top-ok-hoodie", "name": "OK Hoodie", "emoji": "⭐", "image": "top-ok-hoodie.png", "fullImage": "top-ok-hoodie.png", "price": 120, "slot": "outfit"},
-    {"id": "top-strawberry-hoodie", "name": "Strawberry Zip Hoodie", "emoji": "🍓", "image": "top-strawberry-hoodie.png", "fullImage": "top-strawberry-hoodie.png", "price": 125, "slot": "outfit"},
-    {"id": "top-denim-jacket", "name": "Flower Denim Jacket", "emoji": "👖", "image": "top-denim-jacket.png", "fullImage": "top-denim-jacket.png", "price": 140, "slot": "outfit"},
-    {"id": "top-floral-cardigan", "name": "Floral Cardigan", "emoji": "🌸", "image": "top-floral-cardigan.png", "fullImage": "top-floral-cardigan.png", "price": 135, "slot": "outfit"},
-    {"id": "top-cherry-tee", "name": "Cherry Tee", "emoji": "🍒", "image": "top-cherry-tee.png", "fullImage": "top-cherry-tee.png", "price": 90, "slot": "outfit"},
-    {"id": "top-sunny-tee", "name": "Sunny Tee", "emoji": "☀️", "image": "top-sunny-tee.png", "fullImage": "top-sunny-tee.png", "price": 100, "slot": "outfit"},
-    {"id": "pants-lavender-cargo", "name": "Lavender Cargo Look", "emoji": "👖", "image": "pants-lavender-cargo.png", "fullImage": "pants-lavender-cargo.png", "price": 100, "slot": "outfit"},
-    {"id": "pants-pink-sweats", "name": "Pink Sweats Look", "emoji": "🧸", "image": "pants-pink-sweats.png", "fullImage": "pants-pink-sweats.png", "price": 95, "slot": "outfit"},
-    {"id": "pants-denim", "name": "Heart Patch Jeans Look", "emoji": "💙", "image": "pants-denim.png", "fullImage": "pants-denim.png", "price": 110, "slot": "outfit"},
-    {"id": "pants-plaid-cream", "name": "Cream Plaid Look", "emoji": "✨", "image": "pants-plaid-cream.png", "fullImage": "pants-plaid-cream.png", "price": 105, "slot": "outfit"},
-    {"id": "hair-pigtails", "name": "Classic Pigtails", "emoji": "👧", "image": "hair-pigtails.png", "fullImage": "hair-pigtails.png", "price": 0, "slot": "outfit"},
-    {"id": "hair-space-buns", "name": "Space Buns", "emoji": "🍡", "image": "hair-space-buns.png", "fullImage": "hair-space-buns.png", "price": 120, "slot": "outfit"},
-    {"id": "hair-halfup-bow", "name": "Half-Up Bow", "emoji": "🎀", "image": "hair-halfup-bow.png", "fullImage": "hair-halfup-bow.png", "price": 130, "slot": "outfit"},
-    {"id": "hair-messy-bun", "name": "Messy High Bun", "emoji": "💇", "image": "hair-messy-bun.png", "fullImage": "hair-messy-bun.png", "price": 120, "slot": "outfit"},
-    {"id": "hair-side-braid", "name": "Loose Side Braid", "emoji": "🪢", "image": "hair-side-braid.png", "fullImage": "hair-side-braid.png", "price": 125, "slot": "outfit"},
-    {"id": "hat-leopard", "name": "Leopard Bucket Hat Look", "emoji": "🐆", "image": "hat-leopard.png", "fullImage": "hat-leopard.png", "price": 90, "slot": "outfit"},
-    {"id": "hat-plaid-brown", "name": "Plaid Bucket Hat Look", "emoji": "🧢", "image": "hat-plaid-brown.png", "fullImage": "hat-plaid-brown.png", "price": 90, "slot": "outfit"},
-    {"id": "hat-shadow", "name": "Mystery Bucket Hat Look", "emoji": "🕵️", "image": "hat-shadow.png", "fullImage": "hat-shadow.png", "price": 90, "slot": "outfit"},
-    {"id": "hat-frog", "name": "Froggy Bucket Hat Look", "emoji": "🐸", "image": "hat-frog.png", "fullImage": "hat-frog.png", "price": 110, "slot": "outfit"},
-    {"id": "hat-cow-pink", "name": "Pink Cow Hat Look", "emoji": "🐄", "image": "hat-cow-pink.png", "fullImage": "hat-cow-pink.png", "price": 100, "slot": "outfit"},
-    {"id": "hat-smiley", "name": "Smiley Bucket Hat Look", "emoji": "😊", "image": "hat-smiley.png", "fullImage": "hat-smiley.png", "price": 100, "slot": "outfit"},
-    {"id": "hat-doodle", "name": "Doodle Bucket Hat Look", "emoji": "✏️", "image": "hat-doodle.png", "fullImage": "hat-doodle.png", "price": 80, "slot": "outfit"},
-    {"id": "hat-frogpatch", "name": "Frog Patch Hat Look", "emoji": "🐸", "image": "hat-frogpatch.png", "fullImage": "hat-frogpatch.png", "price": 90, "slot": "outfit"},
-    {"id": "hat-cow-bw", "name": "Cow Print Hat Look", "emoji": "🐄", "image": "hat-cow-bw.png", "fullImage": "hat-cow-bw.png", "price": 100, "slot": "outfit"},
+    {
+        "id": "look-lavender-soft",
+        "name": "Lavender Soft Day",
+        "emoji": "💜",
+        "fullImage": "looks/look-lavender-soft.png",
+        "price": 0,
+        "slot": "outfit",
+        "pieces": "Classic Pigtails · Lavender heart hoodie · Ruffle lavender shorts · Heart Mary Janes",
+    },
+    {
+        "id": "look-lavender-denim",
+        "name": "Lavender Denim Day",
+        "emoji": "💙",
+        "fullImage": "looks/look-lavender-denim.png",
+        "price": 100,
+        "slot": "outfit",
+        "pieces": "Classic Pigtails · Lavender heart hoodie · Heart-patch denim · Heart Mary Janes",
+    },
+    {
+        "id": "look-cherry-denim",
+        "name": "Sweet Cherry Casual",
+        "emoji": "🍒",
+        "fullImage": "looks/look-cherry-denim.png",
+        "price": 95,
+        "slot": "outfit",
+        "pieces": "Classic Pigtails · Cherry tee · Heart-patch denim · Heart Mary Janes",
+    },
+    {
+        "id": "look-strawberry-cozy",
+        "name": "Strawberry Cozy Set",
+        "emoji": "🍓",
+        "fullImage": "looks/look-strawberry-cozy.png",
+        "price": 120,
+        "slot": "outfit",
+        "pieces": "Classic Pigtails · Strawberry zip hoodie · Pink sweats · Heart Mary Janes",
+    },
+    {
+        "id": "look-cloud-lounge",
+        "name": "Cloud Lounge",
+        "emoji": "☁️",
+        "fullImage": "looks/look-cloud-lounge.png",
+        "price": 100,
+        "slot": "outfit",
+        "pieces": "Classic Pigtails · Cloud & stars tee · Pink sweats · Heart Mary Janes",
+    },
+    {
+        "id": "look-sunny-plaid",
+        "name": "Sunshine Plaid",
+        "emoji": "☀️",
+        "fullImage": "looks/look-sunny-plaid.png",
+        "price": 105,
+        "slot": "outfit",
+        "pieces": "Classic Pigtails · Sunny tee · Cream plaid pants · Heart Mary Janes",
+    },
+    {
+        "id": "look-bow-cargo",
+        "name": "Bow & Cargo",
+        "emoji": "🎀",
+        "fullImage": "looks/look-bow-cargo.png",
+        "price": 110,
+        "slot": "outfit",
+        "pieces": "Classic Pigtails · Pink bow tee · Lavender cargos · Heart Mary Janes",
+    },
+    {
+        "id": "look-ok-denim",
+        "name": "Star OK Denim",
+        "emoji": "⭐",
+        "fullImage": "looks/look-ok-denim.png",
+        "price": 115,
+        "slot": "outfit",
+        "pieces": "Classic Pigtails · OK hoodie · Heart-patch denim · Heart Mary Janes",
+    },
+    {
+        "id": "look-bear-weekend",
+        "name": "Bear Patch Weekend",
+        "emoji": "🧸",
+        "fullImage": "looks/look-bear-weekend.png",
+        "price": 125,
+        "slot": "outfit",
+        "pieces": "Classic Pigtails · Bear patch cardigan · Cream plaid pants · Heart Mary Janes",
+    },
+    {
+        "id": "look-floral-cargo",
+        "name": "Floral Cargo Day",
+        "emoji": "🌸",
+        "fullImage": "looks/look-floral-cargo.png",
+        "price": 130,
+        "slot": "outfit",
+        "pieces": "Classic Pigtails · Floral cardigan · Lavender cargos · Heart Mary Janes",
+    },
+    {
+        "id": "look-denim-jacket",
+        "name": "Flower Jacket Denim",
+        "emoji": "👖",
+        "fullImage": "looks/look-denim-jacket.png",
+        "price": 140,
+        "slot": "outfit",
+        "pieces": "Classic Pigtails · Flower denim jacket · Heart-patch denim · Heart Mary Janes",
+    },
+    {
+        "id": "look-stripe-lounge",
+        "name": "Pink Stripe Lounge",
+        "emoji": "👚",
+        "fullImage": "looks/look-stripe-lounge.png",
+        "price": 110,
+        "slot": "outfit",
+        "pieces": "Classic Pigtails · Pink stripe sweater · Pink sweats · Heart Mary Janes",
+    },
+    {
+        "id": "look-space-sunny",
+        "name": "Space Bun Sunshine",
+        "emoji": "🍡",
+        "fullImage": "looks/look-space-sunny.png",
+        "price": 135,
+        "slot": "outfit",
+        "pieces": "Space Buns · Sunny tee · Heart-patch denim · Heart Mary Janes",
+    },
+    {
+        "id": "look-buns-ok",
+        "name": "Space Bun OK Day",
+        "emoji": "✨",
+        "fullImage": "looks/look-buns-ok.png",
+        "price": 135,
+        "slot": "outfit",
+        "pieces": "Space Buns · OK hoodie · Lavender cargos · Heart Mary Janes",
+    },
+    {
+        "id": "look-halfup-bow",
+        "name": "Half-Up Bow Soft",
+        "emoji": "🎀",
+        "fullImage": "looks/look-halfup-bow.png",
+        "price": 140,
+        "slot": "outfit",
+        "pieces": "Half-Up Bow · Pink bow tee · Lavender cargos · Heart Mary Janes",
+    },
+    {
+        "id": "look-halfup-cherry",
+        "name": "Half-Up Cherry Casual",
+        "emoji": "🍒",
+        "fullImage": "looks/look-halfup-cherry.png",
+        "price": 140,
+        "slot": "outfit",
+        "pieces": "Half-Up Bow · Cherry tee · Heart-patch denim · Heart Mary Janes",
+    },
+    {
+        "id": "look-messy-berry",
+        "name": "Messy Bun Berry",
+        "emoji": "🍓",
+        "fullImage": "looks/look-messy-berry.png",
+        "price": 145,
+        "slot": "outfit",
+        "pieces": "Messy High Bun · Strawberry zip hoodie · Pink sweats · Heart Mary Janes",
+    },
+    {
+        "id": "look-braid-cloud",
+        "name": "Side Braid Dream",
+        "emoji": "🪢",
+        "fullImage": "looks/look-braid-cloud.png",
+        "price": 145,
+        "slot": "outfit",
+        "pieces": "Loose Side Braid · Cloud & stars tee · Cream plaid pants · Heart Mary Janes",
+    },
 ]
 
 SHOP_ITEMS_BY_ID = {item["id"]: item for item in SHOP_CATALOG}
@@ -312,6 +447,8 @@ class ShopItem(BaseModel):
     fullImage: Optional[str] = None
     price: int
     slot: str
+    # Human-readable breakdown, e.g. "Pigtails · Hoodie · Shorts · Shoes"
+    pieces: Optional[str] = None
 
 
 class ShopState(BaseModel):

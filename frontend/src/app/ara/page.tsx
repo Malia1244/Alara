@@ -13,7 +13,13 @@ import {
   type ShopState,
 } from "@/lib/api";
 
-const FREE_STARTER_IDS = new Set(["hair-pigtails", "top-classic-lavender"]);
+const FREE_STARTER_IDS = new Set(["look-lavender-soft"]);
+
+function outfitPreviewSrc(item: ShopItem): string | null {
+  if (item.fullImage) return `/outfits/${item.fullImage}`;
+  if (item.image) return `/shop-items/${item.image}`;
+  return null;
+}
 
 export default function AraPage() {
   const [shop, setShop] = useState<ShopState | null>(null);
@@ -84,7 +90,7 @@ export default function AraPage() {
               Dressing room
             </h1>
             <p className="mt-1 max-w-md text-sm leading-relaxed text-muted">
-              Pick one complete look for Ara. Buy more in the shop.
+              Wear one complete named look — hair, top, bottoms, and shoes.
             </p>
           </div>
           <Link
@@ -144,10 +150,11 @@ export default function AraPage() {
             <h2 className="text-xs font-bold uppercase tracking-[0.14em] text-muted">
               Your looks
             </h2>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {ownedItems.map((item) => {
                 const isEquipped = shop.equipped.outfit === item.id;
                 const isBusy = busyId === item.id;
+                const preview = outfitPreviewSrc(item);
                 return (
                   <button
                     key={item.id}
@@ -158,33 +165,47 @@ export default function AraPage() {
                         ? handleUnequip(item.slot, item.id)
                         : handleEquip(item.id));
                     }}
-                    className={`interactive-tile flex flex-col items-center gap-2 rounded-2xl border p-4 text-center transition disabled:opacity-60 ${
+                    className={`interactive-tile flex gap-4 rounded-2xl border p-4 text-left transition disabled:opacity-60 ${
                       isEquipped
                         ? "border-brand bg-brand-soft/70"
                         : "border-border bg-surface hover:border-brand/40"
                     }`}
                   >
-                    {item.image ? (
-                      <Image
-                        src={`/shop-items/${item.image}`}
-                        alt=""
-                        width={48}
-                        height={48}
-                        className="h-12 w-12 object-contain"
-                      />
-                    ) : (
-                      <span className="text-3xl">{item.emoji}</span>
-                    )}
-                    <p className="text-sm font-semibold text-ink">{item.name}</p>
-                    <span
-                      className={`rounded-xl px-3 py-1 text-[11px] font-semibold ${
-                        isEquipped
-                          ? "bg-brand text-white"
-                          : "bg-stone-100 text-stone-600"
-                      }`}
-                    >
-                      {isBusy ? "…" : isEquipped ? "Wearing · tap off" : "Wear"}
-                    </span>
+                    <div className="relative h-24 w-20 shrink-0 overflow-hidden rounded-xl bg-panel">
+                      {preview ? (
+                        <Image
+                          src={preview}
+                          alt=""
+                          fill
+                          sizes="80px"
+                          className="object-contain object-bottom"
+                          unoptimized
+                        />
+                      ) : (
+                        <span className="flex h-full items-center justify-center text-3xl">
+                          {item.emoji}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                      <p className="font-display text-base font-semibold text-ink">
+                        {item.name}
+                      </p>
+                      {item.pieces && (
+                        <p className="text-[11px] leading-snug text-muted">
+                          {item.pieces}
+                        </p>
+                      )}
+                      <span
+                        className={`mt-auto self-start rounded-xl px-3 py-1 text-[11px] font-semibold ${
+                          isEquipped
+                            ? "bg-brand text-white"
+                            : "bg-stone-100 text-stone-600"
+                        }`}
+                      >
+                        {isBusy ? "…" : isEquipped ? "Wearing · tap off" : "Wear"}
+                      </span>
+                    </div>
                   </button>
                 );
               })}
