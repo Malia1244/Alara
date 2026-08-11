@@ -411,6 +411,26 @@ html[data-study-scene="focus"] .app-backdrop::after {
   animation: ara-bubble-in 0.35s ease-out both;
 }
 
+@keyframes alara-loading-slide {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(220%);
+  }
+}
+
+.alara-loading-bar {
+  animation: alara-loading-slide 1.15s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .alara-loading-bar {
+    animation: none;
+    width: 100%;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ara-idle,
   .ara-react,

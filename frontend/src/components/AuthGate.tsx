@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
+import LoadingScreen from "@/components/LoadingScreen";
 import { isSupabaseConfigured } from "@/lib/supabase";
 
 const PUBLIC_PATHS = new Set(["/login", "/signup"]);
@@ -44,9 +45,12 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
 
   if (isLoading || (!user && !isPublic) || (user && isPublic)) {
     return (
-      <div className="flex flex-1 items-center justify-center py-20 text-sm text-muted">
-        Loading...
-      </div>
+      <LoadingScreen
+        title="Alara"
+        message={
+          isLoading ? "Signing you in…" : "Taking you to the right place…"
+        }
+      />
     );
   }
 

@@ -1,26 +1,27 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import LoadingScreen from "@/components/LoadingScreen";
 import { wakeApi } from "@/lib/api";
 
 /**
- * Free Render backends sleep when idle. The first request can take 30–60s.
- * Ping /health on load and show a short notice while waiting.
+ * Free Render backends sleep when idle. Show a full loading page while
+ * waking so other devices don't look stuck on a blank screen.
  */
 export default function ApiWakeBanner() {
-  const [show, setShow] = useState(false);
+  const [phase, setPhase] = useState<"checking" | "slow" | "ready">("checking");
 
   useEffect(() => {
     let cancelled = false;
     let slowTimer: ReturnType<typeof setTimeout> | null = null;
 
     slowTimer = setTimeout(() => {
-      if (!cancelled) setShow(true);
-    }, 2500);
+      if (!cancelled) setPhase("slow");
+    }, 1200);
 
     wakeApi().finally(() => {
       if (slowTimer) clearTimeout(slowTimer);
-      if (!cancelled) setShow(false);
+      if (!cancelled) setPhase("ready");
     });
 
     return () => {
@@ -29,14 +30,14 @@ export default function ApiWakeBanner() {
     };
   }, []);
 
-  if (!show) return null;
+  if (phase !== "slow") return null;
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 top-0 z-[60] flex justify-center px-3 pt-3">
-      <p className="rounded-xl border border-border bg-surface/95 px-4 py-2 text-center text-xs font-medium text-ink shadow-sm backdrop-blur">
-        Waking up the server — free hosting can take about 30–60 seconds the
-        first time…
-      </p>
+    <div className="fixed inset-0 z-[70] flex bg-[var(--background)]">
+      <LoadingScreen
+        title="Waking Ara up"
+        message="The free server went to sleep. This can take about 30–60 seconds the first time — hang tight."
+      />
     </div>
   );
 }
