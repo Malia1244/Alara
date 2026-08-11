@@ -63,9 +63,10 @@ export default function StudySessionBar() {
 
   if (onTimedStudy || !session) return null;
 
-  const vibe = getVibe(session.vibe);
-  const done = session.goals.filter((g) => g.done).length;
-  const total = session.goals.length;
+  const activeSession = session;
+  const vibe = getVibe(activeSession.vibe);
+  const done = activeSession.goals.filter((g) => g.done).length;
+  const total = activeSession.goals.length;
 
   function clearSession() {
     writeStudySession(null);
@@ -75,16 +76,16 @@ export default function StudySessionBar() {
   }
 
   function toggleMute() {
-    if (session.status !== "active") return;
-    const on = !session.musicOn;
-    const next = { ...session, musicOn: on };
+    if (activeSession.status !== "active") return;
+    const on = !activeSession.musicOn;
+    const next = { ...activeSession, musicOn: on };
     writeStudySession(next);
     setSession(next);
-    if (on) void getSharedAmbientPlayer().start(session.vibe);
+    if (on) void getSharedAmbientPlayer().start(activeSession.vibe);
     else getSharedAmbientPlayer().stop();
   }
 
-  if (session.status === "ended") {
+  if (activeSession.status === "ended") {
     return (
       <div className="study-session-bar sticky top-0 z-40 border-b border-border bg-surface/95 px-3 py-2.5 backdrop-blur-md md:pl-4">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-2 sm:gap-3">
@@ -111,13 +112,13 @@ export default function StudySessionBar() {
     );
   }
 
-  const remainingSec = Math.max(0, Math.ceil((session.endsAt - now) / 1000));
-  const isBreak = session.pomodoro?.segment === "break";
+  const remainingSec = Math.max(0, Math.ceil((activeSession.endsAt - now) / 1000));
+  const isBreak = activeSession.pomodoro?.segment === "break";
   const label =
-    session.timerMode === "pomodoro" && session.pomodoro
+    activeSession.timerMode === "pomodoro" && activeSession.pomodoro
       ? isBreak
         ? `Break · ${vibe.name}`
-        : `Focus ${session.pomodoro.currentRound}/${session.pomodoro.rounds} · ${vibe.name}`
+        : `Focus ${activeSession.pomodoro.currentRound}/${activeSession.pomodoro.rounds} · ${vibe.name}`
       : vibe.name;
 
   return (
@@ -132,9 +133,9 @@ export default function StudySessionBar() {
               {label}
             </p>
             <p className="truncate text-xs text-muted">
-              {session.subjectName ? `${session.subjectName} · ` : ""}
+              {activeSession.subjectName ? `${activeSession.subjectName} · ` : ""}
               {done}/{total} goals
-              {session.musicOn ? " · music on" : " · muted"}
+              {activeSession.musicOn ? " · music on" : " · muted"}
             </p>
           </div>
         </div>
@@ -144,7 +145,7 @@ export default function StudySessionBar() {
             onClick={toggleMute}
             className="rounded-lg border border-border bg-panel px-3 py-1.5 text-xs font-semibold text-ink hover:border-brand/40"
           >
-            {session.musicOn ? "Mute" : "Unmute"}
+            {activeSession.musicOn ? "Mute" : "Unmute"}
           </button>
           <Link
             href="/timed-study"
