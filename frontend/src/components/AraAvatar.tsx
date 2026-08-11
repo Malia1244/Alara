@@ -224,6 +224,13 @@ export default function AraAvatar({
       if (pantsId && !topId) {
         srcCandidates.push(`/outfits/combos/${hairId}__${pantsId}.png`);
       }
+      // Fallbacks when combo art is missing (e.g. Vercel size-limited deploys).
+      if (topItem?.fullImage) {
+        srcCandidates.push(`/outfits/${topItem.fullImage}`);
+      }
+      if (pantsItem?.fullImage) {
+        srcCandidates.push(`/outfits/${pantsItem.fullImage}`);
+      }
       if (hairItem?.fullImage) {
         srcCandidates.push(`/outfits/${hairItem.fullImage}`);
       }
@@ -243,20 +250,18 @@ export default function AraAvatar({
       if (topId && hatId && !pantsId) {
         srcCandidates.push(`/outfits/combos/${topId}__${hatId}.png`);
       }
-      if (topItem?.fullImage && !pantsId) {
+      // Always keep single-piece portraits as fallbacks after combos.
+      if (topItem?.fullImage) {
         srcCandidates.push(`/outfits/${topItem.fullImage}`);
       }
-      if (topItem?.fullImage && pantsId && !hatId) {
-        srcCandidates.push(`/outfits/${topItem.fullImage}`);
-      }
-      if (pantsItem?.fullImage && !topId && !hatId) {
+      if (pantsItem?.fullImage) {
         srcCandidates.push(`/outfits/${pantsItem.fullImage}`);
       }
-      if (hairId === "hair-pigtails" && !topId && !pantsId && !hatId) {
-        srcCandidates.push(`/outfits/${hairItem!.fullImage}`);
-      }
-      if (headItem?.fullImage && !topId && !pantsId) {
+      if (headItem?.fullImage) {
         srcCandidates.push(`/outfits/${headItem.fullImage}`);
+      }
+      if (hairItem?.fullImage) {
+        srcCandidates.push(`/outfits/${hairItem.fullImage}`);
       }
     }
   }
