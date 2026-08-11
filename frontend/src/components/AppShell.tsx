@@ -6,6 +6,7 @@ import BottomNav from "@/components/BottomNav";
 import Sidebar from "@/components/Sidebar";
 import AuthGate from "@/components/AuthGate";
 import { AraPrefsProvider } from "@/components/AraPrefsProvider";
+import ApiWakeBanner from "@/components/ApiWakeBanner";
 import StudyMusicBridge from "@/components/StudyMusicBridge";
 import StudySessionBar from "@/components/StudySessionBar";
 import {
@@ -44,6 +45,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <AuthGate>
       <AraPrefsProvider>
+        <ApiWakeBanner />
         <div
           className={
             isPublic

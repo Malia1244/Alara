@@ -161,6 +161,19 @@ export type TeachReply = {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
+/** Ping Render so a sleeping free-tier backend starts waking ASAP. */
+export async function wakeApi(): Promise<boolean> {
+  try {
+    const res = await fetch(`${API_URL}/health`, {
+      cache: "no-store",
+      // Health does not need auth — keep it cheap.
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 async function authHeaders(
   extra?: Record<string, string>
 ): Promise<Record<string, string>> {
