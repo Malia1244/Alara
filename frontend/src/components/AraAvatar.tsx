@@ -1,9 +1,14 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { useAraPrefs } from "@/components/AraPrefsProvider";
 import { fetchShopState, type ShopItem, type ShopState } from "@/lib/api";
+import {
+  lookSrcFromShop,
+  readCachedLookSrc,
+  writeCachedLookSrc,
+} from "@/lib/araOutfitCache";
 import { ARA_POSE_SRC, type AraPose } from "@/lib/araPoses";
 
 type OverlayPos = {
@@ -129,6 +134,17 @@ function StickerOverlay({
   );
 }
 
+function applyShopState(data: ShopState) {
+  const equippedIds = Object.values(data.equipped).filter(
+    (id): id is string => Boolean(id)
+  );
+  const itemsById = Object.fromEntries(
+    data.items.map((item) => [item.id, item])
+  );
+  writeCachedLookSrc(lookSrcFromShop(data));
+  return { equippedIds, itemsById };
+}
+
 export default function AraAvatar({
   size,
   className = "",
@@ -142,31 +158,41 @@ export default function AraAvatar({
   const motionEnabled = prefs.motion;
   const [equippedIds, setEquippedIds] = useState<string[]>([]);
   const [itemsById, setItemsById] = useState<Record<string, ShopItem>>({});
+  const [cachedLookSrc, setCachedLookSrc] = useState<string | null>(null);
+  const [outfitReady, setOutfitReady] = useState(!showOutfits);
   const [srcIndex, setSrcIndex] = useState(0);
+
+  // Apply last-worn look before paint so home doesn't flash default purple Ara.
+  useLayoutEffect(() => {
+    if (!showOutfits) {
+      setOutfitReady(true);
+      return;
+    }
+    if (shop) {
+      const applied = applyShopState(shop);
+      setEquippedIds(applied.equippedIds);
+      setItemsById(applied.itemsById);
+      setCachedLookSrc(lookSrcFromShop(shop));
+      setOutfitReady(true);
+      return;
+    }
+    const cached = readCachedLookSrc();
+    if (cached) setCachedLookSrc(cached);
+    setOutfitReady(true);
+  }, [showOutfits, shop]);
 
   useEffect(() => {
     if (!showOutfits) return;
-
-    if (shop) {
-      setEquippedIds(
-        Object.values(shop.equipped).filter((id): id is string => Boolean(id))
-      );
-      setItemsById(
-        Object.fromEntries(shop.items.map((item) => [item.id, item]))
-      );
-      return;
-    }
+    if (shop) return;
 
     let cancelled = false;
     fetchShopState()
       .then((data) => {
         if (cancelled) return;
-        setEquippedIds(
-          Object.values(data.equipped).filter((id): id is string => Boolean(id))
-        );
-        setItemsById(
-          Object.fromEntries(data.items.map((item) => [item.id, item]))
-        );
+        const applied = applyShopState(data);
+        setEquippedIds(applied.equippedIds);
+        setItemsById(applied.itemsById);
+        setCachedLookSrc(lookSrcFromShop(data));
       })
       .catch(() => {
         // Not worth showing an error just for the dress-up overlays.
@@ -189,9 +215,15 @@ export default function AraAvatar({
     equippedItems.find((item) => item?.slot === "head" && item.fullImage) ??
     null;
 
+  const liveLookSrc = lookItem?.fullImage
+    ? `/outfits/${lookItem.fullImage}`
+    : null;
+
   const srcCandidates: string[] = [];
-  if (lookItem?.fullImage) {
-    srcCandidates.push(`/outfits/${lookItem.fullImage}`);
+  if (liveLookSrc) {
+    srcCandidates.push(liveLookSrc);
+  } else if (cachedLookSrc && showOutfits) {
+    srcCandidates.push(cachedLookSrc);
   }
   srcCandidates.push(ARA_POSE_SRC[pose]);
 
@@ -236,7 +268,12 @@ export default function AraAvatar({
   return (
     <div
       className={`relative inline-block shrink-0 overflow-visible bg-transparent [background:transparent] ${motionClass} ${className}`}
-      style={{ width: size, height: size, backgroundColor: "transparent" }}
+      style={{
+        width: size,
+        height: size,
+        backgroundColor: "transparent",
+        visibility: outfitReady ? "visible" : "hidden",
+      }}
     >
       {behind.map(({ id, item, position }) => (
         <StickerOverlay

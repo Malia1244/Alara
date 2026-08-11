@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import AraPrefsControls from "@/components/AraPrefsControls";
 import { fetchShopState } from "@/lib/api";
+import { lookSrcFromShop, writeCachedLookSrc } from "@/lib/araOutfitCache";
 import {
   IconCloset,
   IconHome,
@@ -35,7 +36,9 @@ export default function Sidebar() {
     let cancelled = false;
     fetchShopState()
       .then((data) => {
-        if (!cancelled) setPoints(data.points);
+        if (cancelled) return;
+        setPoints(data.points);
+        writeCachedLookSrc(lookSrcFromShop(data));
       })
       .catch(() => {});
     return () => {
