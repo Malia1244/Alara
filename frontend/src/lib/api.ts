@@ -113,6 +113,50 @@ export type PracticeDeck = {
   cards: Flashcard[];
 };
 
+export type TeachTopic = {
+  topic: string;
+  subject: string;
+  subject_id: string | null;
+  reason: "struggling" | "learning" | string;
+};
+
+export type TeachReviewEntry = {
+  id: string;
+  subject: string;
+  unit: string | null;
+  content: string;
+  created_at: string;
+};
+
+export type AraMemoryCard = {
+  topic: string;
+  subject: string;
+  summary: string;
+};
+
+export type TeachStart = {
+  topic: string;
+  subject: string;
+  subject_id: string | null;
+  message: string;
+  review_prompt: string;
+  review_entry: TeachReviewEntry | null;
+  past_memories?: AraMemoryCard[];
+};
+
+export type TeachChatTurn = {
+  role: "user" | "ara";
+  content: string;
+};
+
+export type TeachReply = {
+  status: "confused" | "clarify" | "understood" | string;
+  message: string;
+  follow_up: string;
+  lesson_summary?: string;
+  memory_saved?: boolean;
+};
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 async function authHeaders(
@@ -174,6 +218,25 @@ export async function deleteSubject(subjectId: string): Promise<void> {
   if (!res.ok) throw new Error(`Failed to delete subject (${res.status})`);
 }
 
+export async function updateSubject(
+  subjectId: string,
+  input: {
+    days_until_test?: number | null;
+    test_date?: string | null;
+    unit?: string;
+  }
+): Promise<Subject> {
+  const res = await apiFetch(`/subjects/${subjectId}`, {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.detail ?? `Failed to update subject (${res.status})`);
+  }
+  return res.json();
+}
+
 export async function fetchLearningEntries(
   subjectId?: string
 ): Promise<LearningEntry[]> {
@@ -197,17 +260,72 @@ export async function createLearningEntry(input: {
   return res.json();
 }
 
+export type NotesExplanation = {
+  summary: string;
+  how_to: string;
+  tip: string;
+};
+
+/** Ara explains draft notes (before or without saving). */
+export async function explainDraftNotes(input: {
+  content: string;
+  subject?: string;
+  unit?: string;
+}): Promise<NotesExplanation> {
+  const res = await apiFetch("/learning-entries/explain", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) throw new Error(`Failed to explain notes (${res.status})`);
+  return res.json();
+}
+
+/** Ara explains a saved learning-log entry. */
+export async function explainLearningEntry(
+  entryId: string
+): Promise<NotesExplanation> {
+  const res = await apiFetch(`/learning-entries/${entryId}/explain`, {
+    method: "POST",
+  });
+  if (!res.ok) throw new Error(`Failed to explain entry (${res.status})`);
+  return res.json();
+}
+
 export async function fetchQuizForEntry(entryId: string): Promise<Quiz | null> {
   const res = await apiFetch(`/learning-entries/${entryId}/quiz`);
   if (!res.ok) throw new Error(`Failed to load quiz (${res.status})`);
   return res.json();
 }
 
-export async function generateQuiz(entryId: string): Promise<Quiz> {
+export type QuizDifficulty = "easy" | "medium" | "hard";
+
+export type QuizGenerateOptions = {
+  num_questions?: number;
+  difficulty?: QuizDifficulty;
+};
+
+export async function generateQuiz(
+  entryId: string,
+  options?: QuizGenerateOptions
+): Promise<Quiz> {
   const res = await apiFetch(`/learning-entries/${entryId}/quiz`, {
     method: "POST",
+    body: JSON.stringify({
+      num_questions: options?.num_questions ?? 8,
+      difficulty: options?.difficulty ?? "medium",
+    }),
   });
-  if (!res.ok) throw new Error(`Failed to generate quiz (${res.status})`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    const detail =
+      typeof body?.detail === "string" ? body.detail : null;
+    if (detail && /quota|429|rate|RESOURCE_EXHAUSTED/i.test(detail)) {
+      throw new Error(
+        "Gemini hit its free-tier limit for now. Wait a minute (or until tomorrow) and try again, or raise the quota in Google AI Studio."
+      );
+    }
+    throw new Error(detail ?? `Failed to generate quiz (${res.status})`);
+  }
   return res.json();
 }
 
@@ -230,10 +348,15 @@ export async function fetchProgress(): Promise<ProgressStats> {
 }
 
 export async function createPracticeDeck(
-  subjectId: string
+  subjectId: string,
+  options?: { count?: number; exclude_fronts?: string[] }
 ): Promise<PracticeDeck> {
   const res = await apiFetch(`/subjects/${subjectId}/practice`, {
     method: "POST",
+    body: JSON.stringify({
+      count: options?.count ?? 5,
+      exclude_fronts: options?.exclude_fronts ?? [],
+    }),
   });
   if (!res.ok) {
     const body = await res.json().catch(() => null);
@@ -282,6 +405,81 @@ export async function unequipShopSlot(slot: string): Promise<ShopState> {
   if (!res.ok) {
     const body = await res.json().catch(() => null);
     throw new Error(body?.detail ?? `Failed to unequip item (${res.status})`);
+  }
+  return res.json();
+}
+
+export async function fetchTeachTopics(): Promise<TeachTopic[]> {
+  const res = await apiFetch("/teach-ara/topics");
+  if (!res.ok) throw new Error(`Failed to load teach topics (${res.status})`);
+  const data = await res.json();
+  return data.topics ?? [];
+}
+
+export async function startTeachAra(input?: {
+  topic?: string;
+  subject?: string;
+  subject_id?: string | null;
+}): Promise<TeachStart> {
+  const res = await apiFetch("/teach-ara/start", {
+    method: "POST",
+    body: JSON.stringify(input ?? {}),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.detail ?? `Failed to start Teach Ara (${res.status})`);
+  }
+  return res.json();
+}
+
+export async function sendTeachAraMessage(input: {
+  topic: string;
+  subject: string;
+  subject_id?: string | null;
+  message: string;
+  history: TeachChatTurn[];
+}): Promise<TeachReply> {
+  const res = await apiFetch("/teach-ara/message", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.detail ?? `Failed to talk to Ara (${res.status})`);
+  }
+  return res.json();
+}
+
+export type HomeworkChatTurn = { role: "user" | "ara"; content: string };
+
+export type HomeworkHelpReply = {
+  message: string;
+  follow_up: string;
+};
+
+export async function sendHomeworkHelp(input: {
+  question?: string;
+  history: HomeworkChatTurn[];
+  image_base64?: string | null;
+  image_mime?: string | null;
+}): Promise<HomeworkHelpReply> {
+  const res = await apiFetch("/homework/help", {
+    method: "POST",
+    body: JSON.stringify({
+      question: input.question ?? "",
+      history: input.history,
+      image_base64: input.image_base64 ?? null,
+      image_mime: input.image_mime ?? null,
+    }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    const detail = body?.detail;
+    throw new Error(
+      typeof detail === "string"
+        ? detail
+        : `Couldn't get homework help (${res.status})`
+    );
   }
   return res.json();
 }

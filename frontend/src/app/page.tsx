@@ -2,47 +2,51 @@
 
 import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
-import AraAvatar from "@/components/AraAvatar";
-import { createSubject, deleteSubject, fetchSubjects, type Subject } from "@/lib/api";
+import CharacterStage from "@/components/CharacterStage";
+import { useAraPrefs } from "@/components/AraPrefsProvider";
+import AraPrefsControls from "@/components/AraPrefsControls";
+import {
+  createSubject,
+  deleteSubject,
+  fetchProgress,
+  fetchSubjects,
+  type Subject,
+} from "@/lib/api";
+import { araCoachLine } from "@/lib/araTips";
+import type { AraPose } from "@/lib/araPoses";
 
-// Soft purple-family tones so each subject stands out, but the page
-// still feels cohesive (not a rainbow).
 const ACCENTS = [
   {
-    badgeBg: "bg-violet-50",
-    badgeText: "text-violet-600",
-    bar: "bg-violet-400",
-    barTrack: "bg-violet-100",
-    label: "text-violet-500",
-    strip: "bg-violet-400",
-    ring: "ring-violet-100",
+    badgeBg: "bg-brand-soft",
+    badgeText: "text-brand-ink",
+    bar: "bg-brand",
+    barTrack: "bg-brand-soft",
+    label: "text-brand",
+    strip: "bg-brand",
   },
   {
-    badgeBg: "bg-purple-50",
-    badgeText: "text-purple-600",
-    bar: "bg-purple-400",
-    barTrack: "bg-purple-100",
-    label: "text-purple-500",
-    strip: "bg-purple-400",
-    ring: "ring-purple-100",
+    badgeBg: "bg-sky-100",
+    badgeText: "text-sky",
+    bar: "bg-sky",
+    barTrack: "bg-sky-100",
+    label: "text-sky",
+    strip: "bg-sky",
   },
   {
-    badgeBg: "bg-fuchsia-50",
-    badgeText: "text-fuchsia-600",
-    bar: "bg-fuchsia-400",
-    barTrack: "bg-fuchsia-100",
-    label: "text-fuchsia-500",
-    strip: "bg-fuchsia-400",
-    ring: "ring-fuchsia-100",
+    badgeBg: "bg-amber-100",
+    badgeText: "text-amber-800",
+    bar: "bg-amber",
+    barTrack: "bg-amber-100",
+    label: "text-amber",
+    strip: "bg-amber",
   },
   {
-    badgeBg: "bg-indigo-50",
-    badgeText: "text-indigo-600",
-    bar: "bg-indigo-400",
-    barTrack: "bg-indigo-100",
-    label: "text-indigo-500",
-    strip: "bg-indigo-400",
-    ring: "ring-indigo-100",
+    badgeBg: "bg-accent-soft",
+    badgeText: "text-accent",
+    bar: "bg-accent",
+    barTrack: "bg-accent-soft",
+    label: "text-accent",
+    strip: "bg-accent",
   },
 ];
 
@@ -53,7 +57,7 @@ function accentFor(index: number) {
 function countdownLabel(days: number | null) {
   if (days === null) return null;
   if (days < 0) return "Test date passed";
-  if (days === 0) return "Test is today!";
+  if (days === 0) return "Test is today";
   if (days === 1) return "Test in 1 day";
   return `Test in ${days} days`;
 }
@@ -82,9 +86,10 @@ function testProgress(subject: Subject): number | null {
 }
 
 const inputClass =
-  "w-full rounded-2xl border border-border bg-white px-4 py-2.5 text-sm text-stone-700 outline-none transition-[border-color,box-shadow] placeholder:text-stone-300 focus:border-brand focus:shadow-[0_0_0_4px_rgba(15,118,110,0.12)]";
+  "w-full rounded-xl border border-border bg-white px-4 py-2.5 text-sm text-ink outline-none transition-[border-color,box-shadow] placeholder:text-stone-400 focus:border-brand focus:shadow-[0_0_0_3px_rgba(15,107,92,0.12)]";
 
 export default function Home() {
+  const { prefs } = useAraPrefs();
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -96,6 +101,9 @@ export default function Home() {
   const [daysUntilTest, setDaysUntilTest] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [coachLine, setCoachLine] = useState<string | null>(null);
+  const showTip = prefs.tips && Boolean(coachLine);
+  const araPose: AraPose = showTip ? "encourage" : "wave";
 
   async function loadSubjects() {
     try {
@@ -114,6 +122,19 @@ export default function Home() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial fetch on mount
     loadSubjects();
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchProgress()
+      .then((stats) => {
+        if (cancelled) return;
+        setCoachLine(araCoachLine(stats.topics_to_review));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   async function handleAddSubject(e: FormEvent) {
@@ -172,26 +193,33 @@ export default function Home() {
   return (
     <div className="flex flex-1 justify-center px-4 py-10 sm:px-8 sm:py-14">
       <main className="flex w-full max-w-4xl flex-col gap-8">
-        <header className="animate-rise flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
-          <div className="flex items-end gap-4">
-            <AraAvatar size={72} pose="wink" priority className="drop-shadow-sm" />
-            <div className="pb-1">
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand">
+        <header className="animate-rise flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="flex min-w-0 flex-1 flex-col gap-4 sm:flex-row sm:items-end">
+            <CharacterStage
+              size={88}
+              pose={araPose}
+              priority
+              pad="md"
+            />
+            <div className="min-w-0 pb-1">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-brand">
                 Alara
               </p>
-              <h1 className="font-display text-3xl font-bold tracking-tight text-stone-900 sm:text-4xl">
-                Ready to learn?
+              <h1 className="mt-1 font-display text-4xl font-semibold tracking-tight text-ink sm:text-5xl">
+                Study workspace
               </h1>
-              <p className="mt-1 max-w-md text-sm text-muted">
-                Pick a subject, log what you studied, and quiz with Ara.
+              <p className="mt-2 max-w-md text-sm leading-relaxed text-muted">
+                {showTip
+                  ? "Quiz patterns suggest a review focus. Open a subject to practice."
+                  : "Track subjects, log what you studied, and quiz with Ara."}
               </p>
             </div>
           </div>
 
-          <div className="relative sm:w-60">
+          <div className="relative w-full sm:w-64">
             <svg
               viewBox="0 0 24 24"
-              className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-300"
+              className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
               fill="none"
               aria-hidden
             >
@@ -208,45 +236,79 @@ export default function Home() {
           </div>
         </header>
 
+        {showTip && coachLine && (
+          <div className="ara-callout ara-speech-bubble px-4 py-3 text-sm text-ink">
+            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted">
+              Ara · coach note
+            </p>
+            <p className="mt-1 font-medium">{coachLine}</p>
+          </div>
+        )}
+
+        <Link
+          href="/timed-study"
+          className="interactive-tile flex items-center justify-between gap-4 rounded-2xl border border-brand/25 bg-brand-soft/70 px-5 py-4"
+        >
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-brand">
+              Focus mode
+            </p>
+            <p className="mt-1 font-display text-lg font-semibold text-ink">
+              Timed study session
+            </p>
+            <p className="mt-0.5 text-sm text-muted">
+              Set a timer and goals — Ara keeps you on track.
+            </p>
+          </div>
+          <span className="shrink-0 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">
+            Start
+          </span>
+        </Link>
+
         {upcomingTestSubject && (
           <Link
             href={`/subjects/${upcomingTestSubject.id}`}
-            className="animate-rise-delay interactive-tile group flex flex-col gap-4 overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-violet-500 to-purple-500 p-6 text-white sm:flex-row sm:items-center sm:justify-between"
+            className="animate-rise-delay interactive-tile group flex flex-col gap-4 overflow-hidden rounded-2xl border border-brand/30 bg-gradient-to-br from-brand to-sky p-6 text-white sm:flex-row sm:items-center sm:justify-between"
           >
             <div className="flex items-center gap-4">
-              <AraAvatar size={72} pose="wave" showOutfits={false} />
+              <CharacterStage
+                size={72}
+                pose="wave"
+                pad="sm"
+                className="border-white/25 bg-white/15"
+              />
               <div className="flex flex-col gap-1">
-                <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-violet-100">
-                  Up next
+                <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/80">
+                  Upcoming test
                 </span>
-                <p className="font-display text-xl font-bold leading-tight">
+                <p className="font-display text-2xl font-semibold leading-tight">
                   {upcomingTestSubject.name}
                 </p>
-                <p className="text-sm text-white/85">
+                <p className="text-sm text-white/90">
                   {countdownLabel(upcomingTestSubject.days_until_test)} ·{" "}
                   {upcomingTestSubject.unit}
                 </p>
               </div>
             </div>
-            <span className="self-start rounded-2xl bg-white px-5 py-2.5 text-sm font-semibold text-violet-600 transition-colors group-hover:bg-violet-50 sm:self-center">
-              Continue
+            <span className="self-start rounded-lg bg-white px-5 py-2.5 text-sm font-semibold text-brand-ink transition-colors group-hover:bg-brand-soft sm:self-center">
+              Open subject
             </span>
           </Link>
         )}
 
-        {error && <p className="text-center text-sm text-rose-600">{error}</p>}
+        {error && <p className="text-center text-sm text-accent">{error}</p>}
 
         {isLoading && (
-          <p className="text-center text-sm text-muted">Loading subjects...</p>
+          <p className="text-center text-sm text-muted">Loading subjects…</p>
         )}
 
         {!isLoading && subjects.length === 0 && !error && !isAdding && (
-          <div className="flex flex-col items-center gap-2 rounded-[1.75rem] border border-dashed border-border bg-surface/70 px-6 py-12 text-center">
-            <p className="font-display text-lg font-bold text-stone-800">
+          <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-border bg-surface px-6 py-14 text-center">
+            <p className="font-display text-xl font-semibold text-ink">
               No subjects yet
             </p>
             <p className="text-sm text-muted">
-              Add your first one to start logging and quizzing.
+              Add your first subject to start logging and quizzing.
             </p>
           </div>
         )}
@@ -257,7 +319,7 @@ export default function Home() {
           </p>
         )}
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {visibleSubjects.map((subject, index) => {
             const accent = accentFor(index);
             const countdown = countdownLabel(subject.days_until_test);
@@ -267,76 +329,72 @@ export default function Home() {
             return (
               <div
                 key={subject.id}
-                className="interactive-tile group relative flex flex-col overflow-hidden rounded-[1.75rem] border border-border bg-surface"
-                style={{ animationDelay: `${index * 40}ms` }}
+                className="interactive-tile group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-surface"
               >
                 <button
                   type="button"
                   onClick={() => handleDeleteSubject(subject)}
                   disabled={deletingId === subject.id}
                   aria-label={`Remove ${subject.name}`}
-                  className="absolute right-3 top-4 z-10 rounded-full border border-border bg-white/95 px-2.5 py-1 text-[11px] font-semibold text-stone-500 opacity-100 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50 sm:opacity-0 sm:group-hover:opacity-100"
+                  className="absolute right-3 top-3 z-10 rounded-md border border-border bg-surface px-2 py-1 text-[11px] font-semibold text-muted opacity-100 transition-colors hover:border-accent/40 hover:bg-accent-soft hover:text-accent disabled:opacity-50 sm:opacity-0 sm:group-hover:opacity-100"
                 >
                   {deletingId === subject.id ? "…" : "Remove"}
                 </button>
-                <Link
-                  href={`/subjects/${subject.id}`}
-                  className="flex flex-col"
-                >
-                <div className={`h-1.5 w-full ${accent.strip}`} />
-                <div className="flex flex-col gap-3 p-5">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`flex h-11 w-11 items-center justify-center rounded-2xl text-lg font-bold ring-4 ${accent.badgeBg} ${accent.badgeText} ${accent.ring}`}
-                    >
-                      {subject.name.charAt(0).toUpperCase()}
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="font-display text-base font-bold text-stone-900">
-                        {subject.name}
-                      </span>
-                      <span className="text-xs text-muted">Currently learning</span>
-                    </div>
-                  </div>
-
-                  <span
-                    className={`w-fit rounded-xl px-2.5 py-1 text-xs font-semibold ${accent.badgeBg} ${accent.badgeText}`}
-                  >
-                    {subject.unit}
-                  </span>
-
-                  {progress !== null && (
-                    <div className="flex flex-col gap-1.5">
-                      <div className="flex items-center justify-between">
-                        <span className={`text-xs font-semibold ${accent.label}`}>
-                          {Math.round(progress * 100)}% to test
-                        </span>
-                      </div>
+                <Link href={`/subjects/${subject.id}`} className="flex flex-col">
+                  <div className={`h-1 w-full ${accent.strip}`} />
+                  <div className="flex flex-col gap-3 p-5">
+                    <div className="flex items-center gap-3">
                       <div
-                        className={`h-2 w-full overflow-hidden rounded-full ${accent.barTrack}`}
+                        className={`flex h-10 w-10 items-center justify-center rounded-lg text-sm font-bold ${accent.badgeBg} ${accent.badgeText}`}
                       >
-                        <div
-                          className={`h-full rounded-full ${accent.bar} transition-all`}
-                          style={{ width: `${progress * 100}%` }}
-                        />
+                        {subject.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="font-display text-lg font-semibold text-ink">
+                          {subject.name}
+                        </span>
+                        <span className="text-xs text-muted">Active subject</span>
                       </div>
                     </div>
-                  )}
 
-                  {countdown && (
-                    <p className="text-xs text-muted">
-                      {countdown}
-                      {testDate ? ` · ${testDate}` : ""}
-                    </p>
-                  )}
-                </div>
+                    <span
+                      className={`w-fit rounded-md px-2 py-1 text-xs font-semibold ${accent.badgeBg} ${accent.badgeText}`}
+                    >
+                      {subject.unit}
+                    </span>
+
+                    {progress !== null && (
+                      <div className="flex flex-col gap-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className={`text-xs font-semibold ${accent.label}`}>
+                            {Math.round(progress * 100)}% to test
+                          </span>
+                        </div>
+                        <div
+                          className={`h-1.5 w-full overflow-hidden rounded-full ${accent.barTrack}`}
+                        >
+                          <div
+                            className={`h-full rounded-full ${accent.bar} transition-all`}
+                            style={{ width: `${progress * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {countdown && (
+                      <p className="text-xs text-muted">
+                        {countdown}
+                        {testDate ? ` · ${testDate}` : ""}
+                      </p>
+                    )}
+                  </div>
                 </Link>
                 <div className="px-5 pb-5">
                   <Link
                     href={`/subjects/${subject.id}/practice`}
-                    className="inline-flex rounded-xl bg-brand px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-teal-700"
+                    className="inline-flex rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-brand-ink"
                   >
-                    Practice / Test →
+                    Practice
                   </Link>
                 </div>
               </div>
@@ -347,19 +405,19 @@ export default function Home() {
         {isAdding ? (
           <form
             onSubmit={handleAddSubject}
-            className="flex flex-col gap-5 rounded-[1.75rem] border border-border bg-surface p-7 shadow-[0_16px_40px_-28px_rgba(28,25,23,0.35)]"
+            className="flex flex-col gap-5 rounded-2xl border border-brand/20 bg-surface p-7"
           >
             <div>
-              <h2 className="font-display text-xl font-bold text-stone-900">
+              <h2 className="font-display text-2xl font-semibold text-ink">
                 New subject
               </h2>
               <p className="mt-1 text-sm text-muted">
-                Tell Ara what you&apos;re studying right now.
+                Set up what you&apos;re studying right now.
               </p>
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="name" className="text-sm font-semibold text-stone-600">
+              <label htmlFor="name" className="text-sm font-semibold text-ink">
                 Subject name
               </label>
               <input
@@ -374,8 +432,8 @@ export default function Home() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="unit" className="text-sm font-semibold text-stone-600">
-                What unit are you in?
+              <label htmlFor="unit" className="text-sm font-semibold text-ink">
+                Current unit
               </label>
               <input
                 id="unit"
@@ -391,9 +449,9 @@ export default function Home() {
             <div className="flex flex-col gap-1.5">
               <label
                 htmlFor="daysUntilTest"
-                className="text-sm font-semibold text-stone-600"
+                className="text-sm font-semibold text-ink"
               >
-                Days until your next test{" "}
+                Days until next test{" "}
                 <span className="font-normal text-muted">(optional)</span>
               </label>
               <input
@@ -411,14 +469,14 @@ export default function Home() {
               <button
                 type="submit"
                 disabled={isSaving}
-                className="animate-pop rounded-2xl bg-brand px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="animate-pop rounded-lg bg-brand px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-ink disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {isSaving ? "Saving..." : "Add subject"}
+                {isSaving ? "Saving…" : "Add subject"}
               </button>
               <button
                 type="button"
                 onClick={() => setIsAdding(false)}
-                className="rounded-2xl border border-border px-6 py-2.5 text-sm font-semibold text-stone-600 transition-colors hover:bg-stone-50"
+                className="rounded-lg border border-border px-6 py-2.5 text-sm font-semibold text-muted transition-colors hover:bg-panel hover:text-ink"
               >
                 Cancel
               </button>
@@ -428,14 +486,14 @@ export default function Home() {
           <button
             type="button"
             onClick={() => setIsAdding(true)}
-            className="animate-pop group mx-auto flex items-center gap-2 rounded-2xl bg-brand px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-teal-700"
+            className="animate-pop mx-auto flex items-center gap-2 rounded-lg bg-brand px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-ink"
           >
-            <span className="flex h-5 w-5 items-center justify-center rounded-lg bg-white/20 text-sm leading-none">
-              +
-            </span>
+            <span className="text-base leading-none">+</span>
             Add subject
           </button>
         )}
+
+        <AraPrefsControls className="mx-auto w-full max-w-sm md:hidden" />
       </main>
     </div>
   );

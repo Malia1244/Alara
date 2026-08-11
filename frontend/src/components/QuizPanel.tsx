@@ -1,27 +1,36 @@
 "use client";
 
-import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
+import AraAvatar from "@/components/AraAvatar";
 import {
   fetchQuizForEntry,
   generateQuiz,
   submitQuiz,
   type Quiz,
+  type QuizDifficulty,
   type QuizResult,
 } from "@/lib/api";
-import { ARA_POSE_SRC } from "@/lib/araPoses";
+import type { AraPose } from "@/lib/araPoses";
 
 export type QuizStatus = "none" | "in-progress" | "completed";
 
 type Props = {
   entryId: string;
-  // Set for a freshly-created entry so its quiz appears right away instead
-  // of waiting for the user to press "take a quiz".
+  // Kept for older call sites; generation always waits for the student
+  // to pick difficulty + question count first.
   autoGenerate?: boolean;
   // Lets the parent page know whether a quiz exists yet and whether it's
   // been finished, so it can decide what else to reveal on the page.
   onStatusChange?: (status: QuizStatus) => void;
 };
+
+const QUESTION_COUNT_OPTIONS = [3, 5, 8, 10, 12, 15] as const;
+const DIFFICULTY_OPTIONS: { id: QuizDifficulty; label: string; hint: string }[] =
+  [
+    { id: "easy", label: "Easy", hint: "Straightforward recall" },
+    { id: "medium", label: "Medium", hint: "A little thinking" },
+    { id: "hard", label: "Hard", hint: "Trickier application" },
+  ];
 
 const ENCOURAGEMENTS = [
   "Think carefully! You got this!",
@@ -47,12 +56,14 @@ function resultFromCompletedQuiz(quiz: Quiz): QuizResult | null {
         is_correct: chosenIndex === correctIndex,
       };
     }),
+    // Not returned when reloading a finished quiz — only on fresh submit.
+    points_earned: 0,
+    total_points: 0,
   };
 }
 
 export default function QuizPanel({
   entryId,
-  autoGenerate = false,
   onStatusChange,
 }: Props) {
   const [quiz, setQuiz] = useState<Quiz | null>(null);
@@ -62,6 +73,8 @@ export default function QuizPanel({
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [numQuestions, setNumQuestions] = useState(8);
+  const [difficulty, setDifficulty] = useState<QuizDifficulty>("medium");
   // Lets you tuck the finished quiz away once you're done looking at it,
   // while keeping the score visible.
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -82,14 +95,21 @@ export default function QuizPanel({
     setIsLoading(true);
     setError(null);
     try {
-      const newQuiz = await generateQuiz(entryId);
+      const newQuiz = await generateQuiz(entryId, {
+        num_questions: numQuestions,
+        difficulty,
+      });
       setQuiz(newQuiz);
       setAnswers(new Array(newQuiz.questions.length).fill(null));
       setCurrentQuestionIndex(0);
       setIsTakingOpen(true);
       onStatusChangeRef.current?.("in-progress");
-    } catch {
-      setError("Couldn't make a quiz right now. Try again in a bit!");
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Couldn't make a quiz right now. Try again in a bit!"
+      );
     } finally {
       setIsLoading(false);
     }
@@ -114,9 +134,6 @@ export default function QuizPanel({
         }
         setIsChecking(false);
         onStatusChangeRef.current?.("none");
-        if (autoGenerate) {
-          await handleGenerate();
-        }
       } catch {
         // If this fails, we just fall back to the "take a quiz" button —
         // not worth showing an error for a background check.
@@ -125,10 +142,6 @@ export default function QuizPanel({
     }
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial fetch on mount
     loadExistingQuiz();
-    // handleGenerate intentionally omitted: it's stable enough for this
-    // one-time-per-entry check, and including it would refire on every
-    // render since it's redefined each time.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entryId]);
 
   function selectAnswer(questionIndex: number, optionIndex: number) {
@@ -156,12 +169,14 @@ export default function QuizPanel({
     }
   }
 
-  async function handleRetake() {
+  function handleRetake() {
     setResult(null);
     setIsCollapsed(false);
     setQuiz(null);
     setAnswers([]);
-    await handleGenerate();
+    setIsTakingOpen(false);
+    setError(null);
+    onStatusChangeRef.current?.("none");
   }
 
   function goToNext() {
@@ -179,13 +194,86 @@ export default function QuizPanel({
 
   if (!quiz) {
     return (
-      <div className="mt-4">
+      <div className="mt-4 rounded-3xl border border-border bg-surface p-4 sm:p-5">
+        <div className="flex items-start gap-3">
+          <AraAvatar size={44} pose="think" className="shrink-0" />
+          <div>
+            <p className="font-display text-base font-bold text-stone-900">
+              Quiz setup
+            </p>
+            <p className="mt-0.5 text-sm text-muted">
+              Pick how hard it should be and how many questions, then generate.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-col gap-4">
+          <div>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-stone-500">
+              Difficulty
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {DIFFICULTY_OPTIONS.map((option) => {
+                const selected = difficulty === option.id;
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => setDifficulty(option.id)}
+                    disabled={isLoading}
+                    className={`rounded-2xl border px-3 py-2 text-left transition ${
+                      selected
+                        ? "border-brand bg-brand-soft text-brand-ink shadow-sm"
+                        : "border-border bg-white text-stone-700 hover:border-brand/40"
+                    } disabled:opacity-60`}
+                  >
+                    <span className="block text-sm font-semibold">
+                      {option.label}
+                    </span>
+                    <span className="block text-[11px] text-muted">
+                      {option.hint}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-stone-500">
+              Number of questions
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {QUESTION_COUNT_OPTIONS.map((count) => {
+                const selected = numQuestions === count;
+                return (
+                  <button
+                    key={count}
+                    type="button"
+                    onClick={() => setNumQuestions(count)}
+                    disabled={isLoading}
+                    className={`min-w-11 rounded-full border px-3 py-1.5 text-sm font-semibold transition ${
+                      selected
+                        ? "border-brand bg-brand text-white"
+                        : "border-border bg-white text-stone-700 hover:border-brand/40"
+                    } disabled:opacity-60`}
+                  >
+                    {count}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
         <button
-          onClick={handleGenerate}
+          onClick={() => void handleGenerate()}
           disabled={isLoading}
-          className="rounded-full bg-brand-soft px-4 py-2 text-sm font-semibold text-brand shadow-sm transition-transform hover:scale-[1.03] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100"
+          className="mt-5 rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-ink disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {isLoading ? "Making your quiz... ✨" : "Take a quiz on this 📝"}
+          {isLoading
+            ? "Making your quiz…"
+            : `Generate ${numQuestions}-question ${difficulty} quiz`}
         </button>
         {error && <p className="mt-2 text-sm text-rose-500">{error}</p>}
       </div>
@@ -201,11 +289,11 @@ export default function QuizPanel({
     return (
       <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl border border-border bg-brand-soft/60 px-4 py-3">
         <p className="text-sm font-medium text-brand">
-          📝 Quiz ready — {answeredCount}/{totalQuestions} answered
+          Quiz ready — {answeredCount}/{totalQuestions} answered
         </p>
         <button
           onClick={() => setIsTakingOpen(true)}
-          className="shrink-0 rounded-full bg-brand px-4 py-1.5 text-xs font-semibold text-white shadow-sm transition-transform hover:scale-[1.03] hover:bg-teal-600"
+          className="shrink-0 rounded-lg bg-brand px-4 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-brand-ink"
         >
           Continue quiz →
         </button>
@@ -222,7 +310,7 @@ export default function QuizPanel({
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="flex w-full max-w-md flex-col gap-5 rounded-3xl bg-white p-6 shadow-xl"
+            className="flex w-full max-w-md flex-col gap-5 rounded-3xl border border-border bg-surface p-6 shadow-xl"
           >
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
@@ -265,7 +353,7 @@ export default function QuizPanel({
                       className={`rounded-2xl border px-4 py-3 text-left text-sm font-medium transition-all ${
                         isSelected
                           ? "border-brand bg-brand-soft text-brand-ink shadow-sm"
-                          : "border-zinc-100 bg-white text-zinc-700 hover:border-border hover:bg-brand-soft/60"
+                          : "border-border bg-surface text-zinc-700 hover:border-brand/40 hover:bg-brand-soft/60"
                       }`}
                     >
                       {option}
@@ -293,14 +381,7 @@ export default function QuizPanel({
             {error && <p className="text-sm text-rose-500">{error}</p>}
 
             <div className="flex items-center gap-2.5 rounded-2xl bg-brand-soft px-3 py-2.5">
-              <Image
-                src={ARA_POSE_SRC.think}
-                alt=""
-                width={32}
-                height={32}
-                className="h-8 w-8 shrink-0 object-contain"
-                unoptimized
-              />
+              <AraAvatar size={32} pose="think" className="shrink-0" />
               <p className="text-xs font-semibold text-brand">
                 {encouragement}
               </p>
@@ -310,29 +391,24 @@ export default function QuizPanel({
       )}
 
       {result && (
-        <div className="mt-5 flex flex-col gap-4 rounded-3xl border border-zinc-100 bg-brand-soft/50 p-5">
-          <div className="flex flex-col items-center gap-2 rounded-2xl bg-white p-4 text-center shadow-sm">
-            <Image
-              src={
-                result.score === result.total
-                  ? ARA_POSE_SRC.cheer
+        <div className="mt-5 flex flex-col gap-4 rounded-3xl border border-border bg-surface p-5">
+          <div className="flex flex-col items-center gap-2 rounded-2xl border border-border bg-white p-4 text-center shadow-sm">
+            <AraAvatar
+              size={72}
+              pose={
+                (result.score === result.total
+                  ? "cheer"
                   : result.score > 0
-                    ? ARA_POSE_SRC.proud
-                    : ARA_POSE_SRC.encourage
+                    ? "proud"
+                    : "encourage") as AraPose
               }
-              alt=""
-              width={72}
-              height={72}
-              className="h-16 w-16 object-contain"
-              unoptimized
             />
             <p className="text-xl font-bold text-brand">
-              {result.score} / {result.total} correct{" "}
-              {result.score === result.total ? "🎉" : result.score > 0 ? "🌟" : "💪"}
+              {result.score} / {result.total} correct
             </p>
             {result.points_earned > 0 && (
-              <p className="rounded-full bg-brand-soft px-3 py-1 text-xs font-semibold text-brand">
-                +{result.points_earned} points ✨ ({result.total_points} total)
+              <p className="rounded-lg bg-brand-soft px-3 py-1 text-xs font-semibold text-brand">
+                +{result.points_earned} points ({result.total_points} total)
               </p>
             )}
             <div className="flex items-center gap-4">
@@ -349,7 +425,7 @@ export default function QuizPanel({
                 disabled={isLoading}
                 className="text-xs font-semibold text-brand underline-offset-2 hover:text-brand hover:underline disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {isLoading ? "Making new quiz..." : "🔄 Retake with new questions"}
+                🔄 Retake — pick settings again
               </button>
             </div>
           </div>

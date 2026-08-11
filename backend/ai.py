@@ -15,7 +15,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-GEMINI_MODEL = "gemini-2.5-flash"
+# Default to a lite model — free-tier quotas for gemini-2.5-flash are easy
+# to burn through while testing. Override with GEMINI_MODEL in backend/.env.
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite")
 GEMINI_URL = (
     f"https://generativelanguage.googleapis.com/v1beta/models/"
     f"{GEMINI_MODEL}:generateContent"
@@ -91,19 +93,59 @@ FLASHCARDS_SCHEMA = {
     "required": ["cards"],
 }
 
+TEACH_OPENER_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "message": {"type": "string"},
+    },
+    "required": ["message"],
+}
+
+TEACH_REPLY_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "status": {
+            "type": "string",
+            "enum": ["confused", "clarify", "understood"],
+        },
+        "message": {"type": "string"},
+        "follow_up": {"type": "string"},
+        "lesson_summary": {"type": "string"},
+    },
+    "required": ["status", "message"],
+}
+
+
+def format_ara_memories(memories: list[dict]) -> str:
+    """Turn saved lesson rows into a short prompt block."""
+    lines = []
+    for row in memories[:8]:
+        topic = str(row.get("topic") or "").strip()
+        subject = str(row.get("subject") or "").strip()
+        summary = str(row.get("summary") or "").strip()
+        if not topic or not summary:
+            continue
+        label = f"[{subject}] {topic}" if subject else topic
+        lines.append(f"- {label}: {summary}")
+    return "\n".join(lines)
+
 
 class QuizGenerationError(Exception):
     pass
 
 
 def _gemini_json(prompt: str, schema: dict) -> dict:
+    return _gemini_json_parts([{"text": prompt}], schema)
+
+
+def _gemini_json_parts(parts: list[dict], schema: dict) -> dict:
     if not GEMINI_API_KEY:
         raise QuizGenerationError(
             "GEMINI_API_KEY is not set. Check backend/.env"
         )
 
     payload = {
-        "contents": [{"parts": [{"text": prompt}]}],
+        "contents": [{"parts": parts}],
         "generationConfig": {
             "response_mime_type": "application/json",
             "response_schema": schema,
@@ -115,7 +157,7 @@ def _gemini_json(prompt: str, schema: dict) -> dict:
             GEMINI_URL,
             params={"key": GEMINI_API_KEY},
             json=payload,
-            timeout=45.0,
+            timeout=60.0,
         )
         response.raise_for_status()
     except httpx.HTTPStatusError as exc:
@@ -135,10 +177,29 @@ def _gemini_json(prompt: str, schema: dict) -> dict:
         ) from exc
 
 
+_DIFFICULTY_GUIDANCE = {
+    "easy": (
+        "Difficulty: EASY. Use straightforward recall and basic understanding. "
+        "Keep wording simple, avoid tricks, and make the correct answer clearly "
+        "supported by the notes."
+    ),
+    "medium": (
+        "Difficulty: MEDIUM. Mix recall with light application. Questions should "
+        "need a bit of thinking, but stay fair for someone who studied the notes."
+    ),
+    "hard": (
+        "Difficulty: HARD. Prefer application, comparison, and multi-step "
+        "thinking. Wrong options should be plausible. Still stay grounded in "
+        "the notes — do not invent unrelated advanced topics."
+    ),
+}
+
+
 def generate_quiz_questions(
     subject: str,
     notes: str,
     num_questions: int = 5,
+    difficulty: str = "medium",
     focus_misses: Optional[list[str]] = None,
     focus_topics: Optional[list[str]] = None,
 ) -> list[QuizQuestion]:
@@ -162,11 +223,15 @@ def generate_quiz_questions(
                 + "\n"
             )
 
+    difficulty_key = difficulty if difficulty in _DIFFICULTY_GUIDANCE else "medium"
+    difficulty_block = _DIFFICULTY_GUIDANCE[difficulty_key]
+
     prompt = (
         f"You are a friendly tutor helping a student review what they just "
         f"learned in {subject}.\n\n"
         f"Here are their notes:\n---\n{notes}\n---\n"
         f"{focus_block}\n"
+        f"{difficulty_block}\n\n"
         f"Write {num_questions} multiple choice questions that test whether "
         f"they understood and can remember this material. Each question "
         f"needs exactly 4 answer options, with only one correct answer. "
@@ -253,14 +318,23 @@ def generate_flashcards(
     subject: str,
     notes: str,
     num_cards: int = 10,
+    avoid_fronts: Optional[list[str]] = None,
 ) -> list[dict]:
     """Make front/back study cards from the student's notes."""
+    avoid_block = ""
+    if avoid_fronts:
+        listed = "\n".join(f"- {front}" for front in avoid_fronts[:40])
+        avoid_block = (
+            "\nDo NOT repeat these prompts (make fresh ones):\n"
+            f"{listed}\n"
+        )
     prompt = (
-        f"You are helping a student make flashcards for {subject}.\n\n"
+        f"You are helping a student practice {subject}.\n\n"
         f"Notes:\n---\n{notes}\n---\n\n"
-        f"Create {num_cards} flashcards. Front = a short prompt or term. "
-        f"Back = a clear, short answer (1-2 sentences max). "
-        f"Age-appropriate for middle/high school. Cover the main ideas."
+        f"Create {num_cards} practice cards. Front = a short question or "
+        f"prompt (not a vocabulary word list). Back = a clear, short answer "
+        f"(1-2 sentences max). Age-appropriate for middle/high school. "
+        f"Cover the main ideas.{avoid_block}"
     )
     parsed = _gemini_json(prompt, FLASHCARDS_SCHEMA)
     cards = []
@@ -272,3 +346,361 @@ def generate_flashcards(
     if not cards:
         raise QuizGenerationError("Gemini returned no usable flashcards")
     return cards
+
+
+def teach_ara_opener(
+    subject: str,
+    topic: str,
+    notes: str = "",
+    memories: Optional[list[dict]] = None,
+) -> str:
+    """Ara asks the student to teach her a topic."""
+    notes_block = ""
+    if notes.strip():
+        notes_block = (
+            f"\nBackground from the student's notes (do NOT quote them "
+            f"directly; just pick a curious angle):\n---\n{notes[:2500]}\n---\n"
+        )
+    memory_block = format_ara_memories(memories or [])
+    memory_section = ""
+    if memory_block:
+        memory_section = (
+            "\nThings the student already taught you before (you MAY briefly "
+            "mention one related memory if it fits, otherwise just ask to "
+            "learn/relearn this topic):\n"
+            f"{memory_block}\n"
+        )
+    prompt = (
+        "You are Ara, a friendly curious study buddy sitting at a desk. "
+        "The student will teach you.\n\n"
+        f"Subject: {subject}\n"
+        f"Topic to learn: {topic}\n"
+        f"{notes_block}"
+        f"{memory_section}\n"
+        "Write ONE short spoken line (1-2 sentences) asking them to teach "
+        "you this topic. Sound eager and a little confused, like a classmate. "
+        "No bullet lists. Do not explain the topic yourself."
+    )
+    if not GEMINI_API_KEY:
+        return (
+            f"Can you teach me about {topic}? I keep getting mixed up in "
+            f"{subject}…"
+        )
+    try:
+        parsed = _gemini_json(prompt, TEACH_OPENER_SCHEMA)
+        message = str(parsed.get("message", "")).strip()
+        if message:
+            return message
+    except QuizGenerationError:
+        pass
+    return (
+        f"Can you teach me about {topic}? I keep getting mixed up in "
+        f"{subject}…"
+    )
+
+
+def teach_ara_reply(
+    subject: str,
+    topic: str,
+    user_message: str,
+    history: list[dict],
+    notes: str = "",
+    memories: Optional[list[dict]] = None,
+) -> dict:
+    """
+    React to the student's teaching attempt.
+    Returns {status, message, follow_up, lesson_summary} where status is
+    confused | clarify | understood.
+    """
+    history_lines = []
+    for turn in history[-8:]:
+        role = "Student" if turn.get("role") == "user" else "Ara"
+        text = str(turn.get("content", "")).strip()
+        if text:
+            history_lines.append(f"{role}: {text}")
+    history_block = "\n".join(history_lines) if history_lines else "(none yet)"
+    notes_block = notes.strip()[:2500] or "(no notes on file)"
+    memory_block = format_ara_memories(memories or [])
+    memory_section = (
+        f"Things you already learned from this student before:\n{memory_block}\n\n"
+        if memory_block
+        else ""
+    )
+
+    prompt = (
+        "You are Ara, a curious study buddy. The student is TEACHING you. "
+        "You are not the tutor — do not lecture, scold, or dump the full "
+        "correct answer. React like a classmate trying to learn.\n\n"
+        f"Subject: {subject}\n"
+        f"Topic: {topic}\n"
+        f"Student notes (PRIVATE ground truth for judging accuracy — "
+        f"never paste them, never say \"according to your notes\"):\n"
+        f"---\n{notes_block}\n---\n\n"
+        f"{memory_section}"
+        f"Recent chat:\n{history_block}\n\n"
+        f"Student just said:\n---\n{user_message}\n---\n\n"
+        "Judge the student's explanation against the notes/topic:\n"
+        '- "confused" — WRONG, contradictory, empty, nonsense, or so vague '
+        "you can't learn from it. Start like \"I don't understand…\". "
+        "Gently point at the mismatch (\"Wait, I thought X meant…?\" / "
+        "\"That sounds different from what I expected…\") and ask them to "
+        "try again. Do NOT say you understand. Do NOT give the full right "
+        "answer yourself.\n"
+        '- "clarify" — partly right but incomplete, fuzzy, or missing a '
+        "key piece. Start like \"Can you clarify…\". Ask about the missing "
+        "bit only.\n"
+        '- "understood" — ONLY if the explanation is basically correct and '
+        "clear enough. Start like \"I understand now…\", restate the idea "
+        "in your own short words, then optionally ask one tiny check "
+        "question in follow_up. If anything important is wrong, do NOT "
+        "use understood — use confused or clarify instead.\n\n"
+        "message: 1-3 short sentences, warm and age-appropriate. "
+        "follow_up: optional next question from Ara (string, or empty).\n"
+        "lesson_summary: if status is understood, write 1-2 sentences in "
+        "YOUR words of what you learned to remember later; otherwise empty."
+    )
+
+    fallback = {
+        "status": "clarify",
+        "message": (
+            f"Can you clarify {topic} a little more? I almost get it, "
+            "but one part is still fuzzy."
+        ),
+        "follow_up": "",
+        "lesson_summary": "",
+    }
+
+    if not GEMINI_API_KEY:
+        text = user_message.strip()
+        if len(text) < 20:
+            return {
+                "status": "confused",
+                "message": (
+                    "I don't understand yet — can you explain it in a "
+                    "couple of sentences?"
+                ),
+                "follow_up": "",
+                "lesson_summary": "",
+            }
+        if len(text) < 80:
+            return fallback
+        return {
+            "status": "understood",
+            "message": (
+                f"I understand now! So for {topic}, it's basically what "
+                "you just said — thanks for teaching me."
+            ),
+            "follow_up": "What should I remember first if this comes up on a quiz?",
+            "lesson_summary": (
+                f"{topic}: {text[:220].rstrip()}."
+                if text
+                else f"Basics of {topic}."
+            ),
+        }
+
+    try:
+        parsed = _gemini_json(prompt, TEACH_REPLY_SCHEMA)
+    except QuizGenerationError:
+        return fallback
+
+    status = str(parsed.get("status", "clarify")).strip().lower()
+    if status not in ("confused", "clarify", "understood"):
+        status = "clarify"
+    message = str(parsed.get("message", "")).strip() or fallback["message"]
+    follow_up = str(parsed.get("follow_up") or "").strip()
+    lesson_summary = str(parsed.get("lesson_summary") or "").strip()
+    if status == "understood" and not lesson_summary:
+        # Fall back to Ara's spoken restatement so we still save a memory.
+        lesson_summary = message[:280]
+    if status != "understood":
+        lesson_summary = ""
+    return {
+        "status": status,
+        "message": message,
+        "follow_up": follow_up,
+        "lesson_summary": lesson_summary,
+    }
+
+
+HOMEWORK_HELP_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "message": {"type": "string"},
+        "follow_up": {"type": "string"},
+    },
+    "required": ["message"],
+}
+
+
+LEARNING_EXPLAIN_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "summary": {"type": "string"},
+        "how_to": {"type": "string"},
+        "tip": {"type": "string"},
+    },
+    "required": ["summary", "how_to"],
+}
+
+
+def explain_learning_notes(
+    notes: str,
+    subject: Optional[str] = None,
+    unit: Optional[str] = None,
+) -> dict:
+    """
+    Turn a student's messy learning-log notes into a short Ara explanation:
+    what they covered + how to do the problems/concepts.
+    """
+    text = (notes or "").strip()
+    subject_line = subject.strip() if subject else "General"
+    unit_line = unit.strip() if unit else ""
+    context = f"{subject_line}" + (f" · {unit_line}" if unit_line else "")
+
+    fallback = {
+        "summary": (
+            "Here's the big idea from your notes: focus on the main concept "
+            "you wrote down and the steps you practiced."
+        ),
+        "how_to": (
+            "1) Re-read the key terms.\n"
+            "2) Try one example slowly, writing each step.\n"
+            "3) Check whether your answer matches the method in your notes."
+        ),
+        "tip": "If one step feels fuzzy, circle it — that's the best place to practice next.",
+    }
+
+    if not text:
+        return {
+            "summary": "Add a few notes first, and I'll explain what they mean in plain language.",
+            "how_to": "Type what you learned or paste a problem, then tap explain again.",
+            "tip": "",
+        }
+
+    if not GEMINI_API_KEY:
+        # Offline-friendly stub so the button still feels useful in local dev.
+        snippet = text[:220].replace("\n", " ")
+        return {
+            "summary": (
+                f"From your {context} notes, it looks like you're working on: "
+                f"{snippet}{'…' if len(text) > 220 else ''}"
+            ),
+            "how_to": fallback["how_to"],
+            "tip": fallback["tip"],
+        }
+
+    prompt = (
+        "You are Ara, a friendly study buddy for middle/high school students.\n"
+        "The student just logged what they learned today. Their notes may be "
+        "messy, incomplete, or hard for them to understand.\n\n"
+        "Explain their notes back to them in clear, simple language.\n\n"
+        "Rules:\n"
+        "- Be short and helpful — not a textbook chapter.\n"
+        "- summary: 2-4 sentences on WHAT they learned / the main idea.\n"
+        "- how_to: a short step-by-step on HOW to do the problems or use the "
+        "concept (use numbered steps when useful).\n"
+        "- tip: one optional encouraging study tip (or empty string).\n"
+        "- If notes are vague, do your best and say what to add next.\n"
+        "- Do not invent facts that contradict the notes; fill small gaps "
+        "only when needed to teach clearly.\n"
+        "- Warm, age-appropriate tone.\n\n"
+        f"Subject context: {context}\n\n"
+        f"Student notes:\n---\n{text[:6000]}\n---\n\n"
+        "Return JSON with summary, how_to, and tip."
+    )
+
+    try:
+        parsed = _gemini_json(prompt, LEARNING_EXPLAIN_SCHEMA)
+    except QuizGenerationError:
+        return fallback
+
+    summary = str(parsed.get("summary", "")).strip() or fallback["summary"]
+    how_to = str(parsed.get("how_to", "")).strip() or fallback["how_to"]
+    tip = str(parsed.get("tip") or "").strip()
+    return {"summary": summary, "how_to": how_to, "tip": tip}
+
+
+def homework_help_reply(
+    question: str,
+    history: list[dict],
+    image_base64: Optional[str] = None,
+    image_mime: Optional[str] = None,
+) -> dict:
+    """
+    Help a student with a homework question (typed and/or from a photo).
+    Returns {message, follow_up}.
+    """
+    history_lines = []
+    for turn in history[-10:]:
+        role = "Student" if turn.get("role") == "user" else "Ara"
+        text = str(turn.get("content", "")).strip()
+        if text:
+            history_lines.append(f"{role}: {text}")
+    history_block = "\n".join(history_lines) if history_lines else "(none yet)"
+    question_text = (question or "").strip()
+    has_image = bool(image_base64 and image_mime)
+
+    prompt = (
+        "You are Ara, a warm study buddy helping a middle/high school student "
+        "with homework. Your job is to HELP them learn — not to silently do "
+        "the assignment for them.\n\n"
+        "Rules:\n"
+        "- If there's a homework photo, first briefly say what problem you see.\n"
+        "- Guide with steps, hints, and questions. Prefer Socratic coaching.\n"
+        "- You MAY show worked steps for math/science when that teaches clearly, "
+        "but also explain WHY each step works.\n"
+        "- Do NOT only dump a final answer with no explanation.\n"
+        "- Keep the tone friendly, short, and age-appropriate (2-5 short "
+        "paragraphs or a clear step list).\n"
+        "- If the question is incomplete, ask what they need.\n"
+        "- Never help with cheating on live tests in a sneaky way; if they say "
+        "it's a test they're taking right now, encourage honest studying.\n\n"
+        f"Recent chat:\n{history_block}\n\n"
+        f"Student question/text:\n---\n"
+        f"{question_text or '(see attached homework image)'}\n---\n\n"
+        f"{'An image of their homework is attached.' if has_image else ''}\n\n"
+        "Return JSON with:\n"
+        "- message: your helpful reply\n"
+        "- follow_up: optional short question to keep them thinking (or empty)"
+    )
+
+    fallback = {
+        "message": (
+            "I want to help! Tell me a bit more about the problem — or "
+            "upload a clearer photo — and we'll figure out the next step "
+            "together."
+        ),
+        "follow_up": "Which part feels hardest right now?",
+    }
+
+    if not GEMINI_API_KEY:
+        if question_text:
+            return {
+                "message": (
+                    f"Let's tackle this together. Looking at your question, "
+                    f"start by writing what you already know, then we'll "
+                    f"check the next step.\n\nYou asked: {question_text[:280]}"
+                ),
+                "follow_up": "What have you tried so far?",
+            }
+        return fallback
+
+    parts: list[dict] = [{"text": prompt}]
+    if has_image:
+        mime = (image_mime or "image/jpeg").split(";")[0].strip().lower()
+        if mime not in ("image/jpeg", "image/png", "image/webp", "image/gif"):
+            mime = "image/jpeg"
+        # Strip data-URL prefix if the client sent one.
+        raw = image_base64 or ""
+        if "," in raw and raw.strip().lower().startswith("data:"):
+            raw = raw.split(",", 1)[1]
+        parts.append({"inline_data": {"mime_type": mime, "data": raw}})
+
+    try:
+        parsed = _gemini_json_parts(parts, HOMEWORK_HELP_SCHEMA)
+    except QuizGenerationError:
+        return fallback
+
+    message = str(parsed.get("message", "")).strip() or fallback["message"]
+    follow_up = str(parsed.get("follow_up") or "").strip()
+    return {"message": message, "follow_up": follow_up}

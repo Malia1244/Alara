@@ -16,9 +16,13 @@ from supabase import Client, create_client
 
 from ai import (
     QuizGenerationError,
+    explain_learning_notes,
     generate_flashcards,
     generate_quiz_questions,
+    homework_help_reply,
     summarize_miss_topics,
+    teach_ara_opener,
+    teach_ara_reply,
 )
 from auth import CurrentUserId
 
@@ -43,13 +47,15 @@ def get_supabase() -> Client:
     return create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
 
-# Quiz shape: 8 questions total. Prefer recently missed questions for
-# review, then older spaced-repetition items, with the rest freshly
-# generated (and focused on weak topics when we have them).
-TOTAL_QUIZ_QUESTIONS = 8
+# Quiz defaults / caps. Prefer recently missed questions for review, then
+# older spaced-repetition items, with the rest freshly generated.
+DEFAULT_QUIZ_QUESTIONS = 8
+MIN_QUIZ_QUESTIONS = 3
+MAX_QUIZ_QUESTIONS = 15
 MAX_REVIEW_QUESTIONS = 3
 MAX_MISS_REUSE = 3
 REVIEW_MIN_AGE_DAYS = 7
+VALID_QUIZ_DIFFICULTIES = {"easy", "medium", "hard"}
 # How far back we look when spotting miss patterns for the next quiz /
 # progress page.
 MISS_LOOKBACK_QUIZZES = 12
@@ -78,19 +84,24 @@ POINTS_PER_CORRECT_ANSWER = 10
 # whole portrait for this image instead of overlaying "image" on top of the
 # base mascot, which is what makes hats look properly worn instead of
 # floating in front of her.
+# Hats only work with classic pigtails (default / hair-pigtails) — not custom updos.
+CLASSIC_HAIR_ID = "hair-pigtails"
+CUSTOM_HAIR_IDS = {
+    "hair-space-buns",
+    "hair-halfup-bow",
+    "hair-messy-bun",
+    "hair-side-braid",
+}
+# Starter looks every account owns for free.
+FREE_STARTER_ITEM_IDS = ["hair-pigtails", "top-classic-lavender"]
+
 SHOP_CATALOG = [
-    {"id": "bow", "name": "Purple Bow", "emoji": "🎀", "image": None, "fullImage": None, "price": 50, "slot": "head"},
-    {"id": "sunglasses", "name": "Cool Sunglasses", "emoji": "🕶️", "image": None, "fullImage": None, "price": 80, "slot": "face"},
-    {"id": "backpack", "name": "Star Backpack", "emoji": "🎒", "image": None, "fullImage": None, "price": 100, "slot": "back"},
-    {"id": "scarf", "name": "Cozy Scarf", "emoji": "🧣", "image": None, "fullImage": None, "price": 120, "slot": "neck"},
-    {"id": "sparkles", "name": "Sparkle Effect", "emoji": "✨", "image": None, "fullImage": None, "price": 150, "slot": "effect"},
-    {"id": "partyhat", "name": "Party Hat", "emoji": "🎉", "image": None, "fullImage": None, "price": 200, "slot": "head"},
+    # Closet = hats, tops, pants, hair only (no sticker accessories).
     {"id": "hat-leopard", "name": "Leopard Print Bucket Hat", "emoji": "🐆", "image": "hat-leopard.png", "fullImage": "hat-leopard.png", "price": 90, "slot": "head"},
     {"id": "hat-plaid-brown", "name": "Plaid Bucket Hat", "emoji": "🧢", "image": "hat-plaid-brown.png", "fullImage": "hat-plaid-brown.png", "price": 90, "slot": "head"},
     {"id": "hat-shadow", "name": "Mystery Bucket Hat", "emoji": "🕵️", "image": "hat-shadow.png", "fullImage": "hat-shadow.png", "price": 90, "slot": "head"},
     {"id": "hat-frog", "name": "Froggy Bucket Hat", "emoji": "🐸", "image": "hat-frog.png", "fullImage": "hat-frog.png", "price": 110, "slot": "head"},
     {"id": "hat-cow-pink", "name": "Pink Cow Print Bucket Hat", "emoji": "🐄", "image": "hat-cow-pink.png", "fullImage": "hat-cow-pink.png", "price": 100, "slot": "head"},
-    {"id": "hat-bunny", "name": "Bunny Cutie Bucket Hat", "emoji": "🐰", "image": "hat-bunny.png", "fullImage": "hat-bunny.png", "price": 120, "slot": "head"},
     {"id": "hat-smiley", "name": "Smiley Bucket Hat", "emoji": "😊", "image": "hat-smiley.png", "fullImage": "hat-smiley.png", "price": 100, "slot": "head"},
     {"id": "hat-doodle", "name": "Doodle Bucket Hat", "emoji": "✏️", "image": "hat-doodle.png", "fullImage": "hat-doodle.png", "price": 80, "slot": "head"},
     {"id": "hat-frogpatch", "name": "Frog Patch Bucket Hat", "emoji": "🐸", "image": "hat-frogpatch.png", "fullImage": "hat-frogpatch.png", "price": 90, "slot": "head"},
@@ -98,6 +109,7 @@ SHOP_CATALOG = [
     # Tops — each is its own item (not bundled into an outfit). fullImage swaps
     # Ara's whole portrait so the shirt looks properly worn. Slot "top" is
     # separate from "head" so a hat and a top can both be equipped at once.
+    {"id": "top-classic-lavender", "name": "Classic Lavender Outfit", "emoji": "💜", "image": "top-classic-lavender.png", "fullImage": "top-classic-lavender.png", "price": 0, "slot": "top"},
     {"id": "top-stripe-pink", "name": "Pink Stripe Sweater", "emoji": "👚", "image": "top-stripe-pink.png", "fullImage": "top-stripe-pink.png", "price": 110, "slot": "top"},
     {"id": "top-bow-tee", "name": "Pink Bow Tee", "emoji": "🎀", "image": "top-bow-tee.png", "fullImage": "top-bow-tee.png", "price": 90, "slot": "top"},
     {"id": "top-cloud-tee", "name": "Cloud & Stars Tee", "emoji": "☁️", "image": "top-cloud-tee.png", "fullImage": "top-cloud-tee.png", "price": 95, "slot": "top"},
@@ -108,6 +120,17 @@ SHOP_CATALOG = [
     {"id": "top-floral-cardigan", "name": "Floral Cardigan", "emoji": "🌸", "image": "top-floral-cardigan.png", "fullImage": "top-floral-cardigan.png", "price": 135, "slot": "top"},
     {"id": "top-cherry-tee", "name": "Cherry Tee", "emoji": "🍒", "image": "top-cherry-tee.png", "fullImage": "top-cherry-tee.png", "price": 90, "slot": "top"},
     {"id": "top-sunny-tee", "name": "Sunny Tee", "emoji": "☀️", "image": "top-sunny-tee.png", "fullImage": "top-sunny-tee.png", "price": 100, "slot": "top"},
+    # Pants — mix with tops via prebaked combos/{top}__{pants}.png portraits
+    {"id": "pants-lavender-cargo", "name": "Lavender Cargo Pants", "emoji": "👖", "image": "pants-lavender-cargo.png", "fullImage": "pants-lavender-cargo.png", "price": 100, "slot": "pants"},
+    {"id": "pants-pink-sweats", "name": "Pink Sweatpants", "emoji": "🧸", "image": "pants-pink-sweats.png", "fullImage": "pants-pink-sweats.png", "price": 95, "slot": "pants"},
+    {"id": "pants-denim", "name": "Heart Patch Jeans", "emoji": "💙", "image": "pants-denim.png", "fullImage": "pants-denim.png", "price": 110, "slot": "pants"},
+    {"id": "pants-plaid-cream", "name": "Cream Plaid Pants", "emoji": "✨", "image": "pants-plaid-cream.png", "fullImage": "pants-plaid-cream.png", "price": 105, "slot": "pants"},
+    # Hair — classic pigtails allow hats; custom updos do not.
+    {"id": "hair-pigtails", "name": "Classic Pigtails", "emoji": "👧", "image": "hair-pigtails.png", "fullImage": "hair-pigtails.png", "price": 0, "slot": "hair"},
+    {"id": "hair-space-buns", "name": "Space Buns", "emoji": "🍡", "image": "hair-space-buns.png", "fullImage": "hair-space-buns.png", "price": 120, "slot": "hair"},
+    {"id": "hair-halfup-bow", "name": "Half-Up Bow", "emoji": "🎀", "image": "hair-halfup-bow.png", "fullImage": "hair-halfup-bow.png", "price": 130, "slot": "hair"},
+    {"id": "hair-messy-bun", "name": "Messy High Bun", "emoji": "💇", "image": "hair-messy-bun.png", "fullImage": "hair-messy-bun.png", "price": 120, "slot": "hair"},
+    {"id": "hair-side-braid", "name": "Loose Side Braid", "emoji": "🪢", "image": "hair-side-braid.png", "fullImage": "hair-side-braid.png", "price": 125, "slot": "hair"},
 ]
 
 SHOP_ITEMS_BY_ID = {item["id"]: item for item in SHOP_CATALOG}
@@ -127,6 +150,13 @@ class SubjectCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
     unit: str = Field(..., min_length=1, max_length=200)
     days_until_test: Optional[int] = Field(default=None, ge=0)
+
+
+class SubjectUpdate(BaseModel):
+    """Partial update — currently used to set the next test date after check-in."""
+    days_until_test: Optional[int] = Field(default=None, ge=0)
+    test_date: Optional[str] = None  # YYYY-MM-DD
+    unit: Optional[str] = Field(default=None, min_length=1, max_length=200)
 
 
 class Subject(BaseModel):
@@ -170,6 +200,19 @@ class LearningEntry(BaseModel):
     created_at: str
 
 
+class ExplainNotesRequest(BaseModel):
+    """Explain draft notes before they're saved (or any pasted text)."""
+    content: str = Field(..., min_length=1)
+    subject: Optional[str] = None
+    unit: Optional[str] = None
+
+
+class ExplainNotesResponse(BaseModel):
+    summary: str
+    how_to: str
+    tip: str = ""
+
+
 class QuizQuestionPublic(BaseModel):
     question: str
     options: List[str]
@@ -191,6 +234,11 @@ class Quiz(BaseModel):
 
 class QuizSubmission(BaseModel):
     answers: List[int]
+
+
+class QuizGenerateRequest(BaseModel):
+    num_questions: int = DEFAULT_QUIZ_QUESTIONS
+    difficulty: str = "medium"
 
 
 class QuizResultItem(BaseModel):
@@ -254,6 +302,12 @@ class PracticeDeck(BaseModel):
     cards: List[Flashcard]
 
 
+class PracticeRequest(BaseModel):
+    """Generate a small batch of practice cards (not an endless term dump)."""
+    count: int = Field(default=5, ge=3, le=10)
+    exclude_fronts: List[str] = Field(default_factory=list)
+
+
 class ShopItem(BaseModel):
     id: str
     name: str
@@ -287,16 +341,151 @@ class UnequipRequest(BaseModel):
     slot: str
 
 
+class TeachTopic(BaseModel):
+    topic: str
+    subject: str
+    subject_id: Optional[str] = None
+    reason: str = "learning"  # "struggling" | "learning"
+
+
+class TeachTopicsResponse(BaseModel):
+    topics: List[TeachTopic]
+
+
+class TeachStartRequest(BaseModel):
+    topic: Optional[str] = None
+    subject: Optional[str] = None
+    subject_id: Optional[str] = None
+
+
+class TeachReviewEntry(BaseModel):
+    id: str
+    subject: str
+    unit: Optional[str] = None
+    content: str
+    created_at: str
+
+
+class AraMemoryCard(BaseModel):
+    topic: str
+    subject: str
+    summary: str
+
+
+class TeachStartResponse(BaseModel):
+    topic: str
+    subject: str
+    subject_id: Optional[str] = None
+    message: str
+    review_prompt: str = ""
+    review_entry: Optional[TeachReviewEntry] = None
+    past_memories: List[AraMemoryCard] = Field(default_factory=list)
+
+
+class TeachChatTurn(BaseModel):
+    role: str  # "user" | "ara"
+    content: str
+
+
+class TeachMessageRequest(BaseModel):
+    topic: str = Field(..., min_length=1, max_length=200)
+    subject: str = Field(..., min_length=1, max_length=200)
+    subject_id: Optional[str] = None
+    message: str = Field(..., min_length=1, max_length=4000)
+    history: List[TeachChatTurn] = Field(default_factory=list)
+
+
+class TeachMessageResponse(BaseModel):
+    status: str  # confused | clarify | understood
+    message: str
+    follow_up: str = ""
+    lesson_summary: str = ""
+    memory_saved: bool = False
+
+
+class HomeworkChatTurn(BaseModel):
+    role: str  # "user" | "ara"
+    content: str
+
+
+class HomeworkHelpRequest(BaseModel):
+    question: str = Field(default="", max_length=4000)
+    history: List[HomeworkChatTurn] = Field(default_factory=list)
+    image_base64: Optional[str] = Field(default=None, max_length=6_000_000)
+    image_mime: Optional[str] = Field(default=None, max_length=64)
+
+
+class HomeworkHelpResponse(BaseModel):
+    message: str
+    follow_up: str = ""
+
+
 def get_equipped_map(supabase: Client, user_id: str) -> dict:
     """Returns {slot: item_id} for every slot that currently has something
-    equipped. Slots with nothing equipped are simply absent from the dict."""
+    equipped. Slots with nothing equipped are simply absent from the dict.
+    Drops ids that are no longer in the catalog (retired items)."""
     response = (
         supabase.table("equipped_items")
         .select("slot, item_id")
         .eq("user_id", user_id)
         .execute()
     )
-    return {row["slot"]: row["item_id"] for row in response.data if row["item_id"]}
+    return {
+        row["slot"]: row["item_id"]
+        for row in response.data
+        if row["item_id"] and row["item_id"] in SHOP_ITEMS_BY_ID
+    }
+
+
+def ensure_starter_items(supabase: Client, user_id: str) -> list[str]:
+    """Grant free classic hair + outfit so players can always switch back."""
+    purchases_response = (
+        supabase.table("shop_purchases")
+        .select("item_id")
+        .eq("user_id", user_id)
+        .execute()
+    )
+    owned = {row["item_id"] for row in purchases_response.data}
+    for item_id in FREE_STARTER_ITEM_IDS:
+        if item_id in owned:
+            continue
+        try:
+            supabase.table("shop_purchases").insert(
+                {"user_id": user_id, "item_id": item_id}
+            ).execute()
+            owned.add(item_id)
+        except Exception:
+            # Legacy DBs may still unique-constrain item_id globally.
+            # Never fail shop/state — treat starters as owned for this user.
+            owned.add(item_id)
+    for item_id in FREE_STARTER_ITEM_IDS:
+        owned.add(item_id)
+    return list(owned)
+
+
+def _unequip_slot(supabase: Client, user_id: str, slot: str) -> None:
+    supabase.table("equipped_items").upsert(
+        {"user_id": user_id, "slot": slot, "item_id": None},
+        on_conflict="user_id,slot",
+    ).execute()
+
+
+def _equip_slot(supabase: Client, user_id: str, slot: str, item_id: str) -> None:
+    supabase.table("equipped_items").upsert(
+        {"user_id": user_id, "slot": slot, "item_id": item_id},
+        on_conflict="user_id,slot",
+    ).execute()
+
+
+def ensure_classic_hair_equipped(
+    supabase: Client, user_id: str, equipped: dict
+) -> dict:
+    """Default hair is Classic Pigtails so it's always a real equippable slot."""
+    if equipped.get("hair"):
+        return equipped
+    ensure_starter_items(supabase, user_id)
+    _equip_slot(supabase, user_id, "hair", CLASSIC_HAIR_ID)
+    return get_equipped_map(supabase, user_id)
 
 
 def get_or_create_stats_row(supabase: Client, user_id: str) -> dict:
@@ -314,6 +503,30 @@ def get_or_create_stats_row(supabase: Client, user_id: str) -> dict:
         .execute()
     )
     return insert_response.data[0]
+
+
+def build_shop_state(
+    supabase: Client,
+    user_id: str,
+    *,
+    stats: Optional[dict] = None,
+    owned_item_ids: Optional[List[str]] = None,
+    equipped: Optional[dict[str, Optional[str]]] = None,
+) -> ShopState:
+    stats = stats or get_or_create_stats_row(supabase, user_id)
+    owned_item_ids = owned_item_ids or ensure_starter_items(supabase, user_id)
+    equipped = equipped or get_equipped_map(supabase, user_id)
+    equipped = ensure_classic_hair_equipped(supabase, user_id, equipped)
+    # Custom updos can't wear hats — clear any leftover hat.
+    if equipped.get("hair") in CUSTOM_HAIR_IDS and equipped.get("head"):
+        _unequip_slot(supabase, user_id, "head")
+        equipped = get_equipped_map(supabase, user_id)
+    return ShopState(
+        points=stats["points"],
+        owned_item_ids=owned_item_ids,
+        items=[ShopItem(**item) for item in SHOP_CATALOG],
+        equipped=equipped,
+    )
 
 
 def to_public_quiz(row: dict) -> Quiz:
@@ -563,9 +776,61 @@ def get_subject(subject_id: str, user_id: CurrentUserId):
     return to_subject(response.data)
 
 
+@app.patch("/subjects/{subject_id}", response_model=Subject)
+def update_subject(
+    subject_id: str, body: SubjectUpdate, user_id: CurrentUserId
+):
+    supabase = get_supabase()
+    existing = (
+        supabase.table("subjects")
+        .select("id, name, unit, test_date, created_at")
+        .eq("id", subject_id)
+        .eq("user_id", user_id)
+        .maybe_single()
+        .execute()
+    )
+    if not existing.data:
+        raise HTTPException(status_code=404, detail="Subject not found")
+
+    updates: dict = {}
+    if body.unit is not None:
+        updates["unit"] = body.unit.strip()
+
+    if body.test_date is not None:
+        try:
+            parsed = date.fromisoformat(body.test_date)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=400, detail="test_date must be YYYY-MM-DD"
+            ) from exc
+        updates["test_date"] = parsed.isoformat()
+    elif body.days_until_test is not None:
+        updates["test_date"] = (
+            date.today() + timedelta(days=body.days_until_test)
+        ).isoformat()
+
+    if not updates:
+        return to_subject(existing.data)
+
+    response = (
+        supabase.table("subjects")
+        .update(updates)
+        .eq("id", subject_id)
+        .eq("user_id", user_id)
+        .execute()
+    )
+    if not response.data:
+        raise HTTPException(status_code=500, detail="Failed to update subject")
+    return to_subject(response.data[0])
+
+
 @app.post("/subjects/{subject_id}/practice", response_model=PracticeDeck)
-def create_practice_deck(subject_id: str, user_id: CurrentUserId):
-    """Build a flashcard deck from everything logged for this subject."""
+def create_practice_deck(
+    subject_id: str,
+    user_id: CurrentUserId,
+    body: PracticeRequest = PracticeRequest(),
+):
+    """Generate a small batch of practice cards from this subject's notes."""
     supabase = get_supabase()
     subject_response = (
         supabase.table("subjects")
@@ -595,16 +860,29 @@ def create_practice_deck(subject_id: str, user_id: CurrentUserId):
         )
 
     notes = "\n\n".join(row["content"] for row in entries)
+    exclude = [f.strip() for f in body.exclude_fronts if f and f.strip()]
     try:
-        cards = generate_flashcards(subject["name"], notes, num_cards=10)
+        cards = generate_flashcards(
+            subject["name"],
+            notes,
+            num_cards=body.count,
+            avoid_fronts=exclude or None,
+        )
     except QuizGenerationError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    exclude_lower = {f.lower() for f in exclude}
+    filtered = [
+        card
+        for card in cards
+        if card["front"].strip().lower() not in exclude_lower
+    ]
 
     return PracticeDeck(
         subject_id=subject["id"],
         subject=subject["name"],
         unit=subject["unit"],
-        cards=[Flashcard(**card) for card in cards],
+        cards=[Flashcard(**card) for card in filtered],
     )
 
 
@@ -686,6 +964,53 @@ def create_learning_entry(entry: LearningEntryCreate, user_id: CurrentUserId):
     return response.data[0]
 
 
+@app.post("/learning-entries/explain", response_model=ExplainNotesResponse)
+def explain_draft_notes(body: ExplainNotesRequest, user_id: CurrentUserId):
+    """Ara explains draft learning-log notes in a short summary + how-to."""
+    _ = user_id  # auth gate only — no DB row required for drafts
+    result = explain_learning_notes(
+        notes=body.content,
+        subject=body.subject,
+        unit=body.unit,
+    )
+    return ExplainNotesResponse(
+        summary=result.get("summary", ""),
+        how_to=result.get("how_to", ""),
+        tip=result.get("tip", "") or "",
+    )
+
+
+@app.post(
+    "/learning-entries/{entry_id}/explain",
+    response_model=ExplainNotesResponse,
+)
+def explain_saved_entry(entry_id: str, user_id: CurrentUserId):
+    """Ara explains a saved learning-log entry."""
+    supabase = get_supabase()
+    response = (
+        supabase.table("daily_learning_entries")
+        .select("id, subject, unit, content")
+        .eq("id", entry_id)
+        .eq("user_id", user_id)
+        .maybe_single()
+        .execute()
+    )
+    entry = response.data
+    if not entry:
+        raise HTTPException(status_code=404, detail="Learning entry not found")
+
+    result = explain_learning_notes(
+        notes=entry.get("content") or "",
+        subject=entry.get("subject"),
+        unit=entry.get("unit"),
+    )
+    return ExplainNotesResponse(
+        summary=result.get("summary", ""),
+        how_to=result.get("how_to", ""),
+        tip=result.get("tip", "") or "",
+    )
+
+
 @app.get("/learning-entries/{entry_id}/quiz", response_model=Optional[Quiz])
 def get_quiz_for_entry(entry_id: str, user_id: CurrentUserId):
     """Looks up the most recent quiz already generated for this entry, so the
@@ -706,8 +1031,24 @@ def get_quiz_for_entry(entry_id: str, user_id: CurrentUserId):
 
 
 @app.post("/learning-entries/{entry_id}/quiz", response_model=Quiz, status_code=201)
-def generate_quiz(entry_id: str, user_id: CurrentUserId):
+def generate_quiz(
+    entry_id: str,
+    user_id: CurrentUserId,
+    body: Optional[QuizGenerateRequest] = None,
+):
     supabase = get_supabase()
+    options = body or QuizGenerateRequest()
+
+    total_questions = max(
+        MIN_QUIZ_QUESTIONS, min(MAX_QUIZ_QUESTIONS, int(options.num_questions))
+    )
+    difficulty = (
+        options.difficulty
+        if options.difficulty in VALID_QUIZ_DIFFICULTIES
+        else "medium"
+    )
+    max_review = min(MAX_REVIEW_QUESTIONS, max(0, total_questions // 3))
+    max_miss_reuse = min(MAX_MISS_REUSE, max_review)
 
     entry_response = (
         supabase.table("daily_learning_entries")
@@ -747,7 +1088,7 @@ def generate_quiz(entry_id: str, user_id: CurrentUserId):
     focus_misses: List[str] = []
     focus_topics: List[str] = []
 
-    if entry.get("subject_id"):
+    if entry.get("subject_id") and max_review > 0:
         recent_quizzes = (
             supabase.table("quizzes")
             .select(
@@ -780,13 +1121,13 @@ def generate_quiz(entry_id: str, user_id: CurrentUserId):
                 continue
             seen.add(text)
             unique_miss_qs.append(miss["full_question"])
-        if unique_miss_qs:
+        if unique_miss_qs and max_miss_reuse > 0:
             review_questions = random.sample(
-                unique_miss_qs, k=min(MAX_MISS_REUSE, len(unique_miss_qs))
+                unique_miss_qs, k=min(max_miss_reuse, len(unique_miss_qs))
             )
 
         # If we still have review slots, fill with older spaced-repetition items.
-        remaining_slots = MAX_REVIEW_QUESTIONS - len(review_questions)
+        remaining_slots = max_review - len(review_questions)
         if remaining_slots > 0:
             cutoff = (
                 datetime.now(timezone.utc) - timedelta(days=REVIEW_MIN_AGE_DAYS)
@@ -814,7 +1155,10 @@ def generate_quiz(entry_id: str, user_id: CurrentUserId):
                     )
                 )
 
-    new_questions_needed = TOTAL_QUIZ_QUESTIONS - len(review_questions)
+    if len(review_questions) > total_questions:
+        review_questions = random.sample(review_questions, total_questions)
+
+    new_questions_needed = total_questions - len(review_questions)
     new_questions = []
     if new_questions_needed > 0:
         try:
@@ -822,6 +1166,7 @@ def generate_quiz(entry_id: str, user_id: CurrentUserId):
                 entry["subject"],
                 notes,
                 num_questions=new_questions_needed,
+                difficulty=difficulty,
                 focus_misses=focus_misses or None,
                 focus_topics=focus_topics or None,
             )
@@ -829,6 +1174,9 @@ def generate_quiz(entry_id: str, user_id: CurrentUserId):
             raise HTTPException(status_code=502, detail=str(exc)) from exc
 
     combined_questions = new_questions + review_questions
+    # Keep the quiz at the requested size even if Gemini returns extras.
+    if len(combined_questions) > total_questions:
+        combined_questions = combined_questions[:total_questions]
     random.shuffle(combined_questions)
 
     insert_response = (
@@ -934,20 +1282,7 @@ def submit_quiz(quiz_id: str, submission: QuizSubmission, user_id: CurrentUserId
 @app.get("/shop/state", response_model=ShopState)
 def get_shop_state(user_id: CurrentUserId):
     supabase = get_supabase()
-    stats = get_or_create_stats_row(supabase, user_id)
-    purchases_response = (
-        supabase.table("shop_purchases")
-        .select("item_id")
-        .eq("user_id", user_id)
-        .execute()
-    )
-    owned_item_ids = [row["item_id"] for row in purchases_response.data]
-    return ShopState(
-        points=stats["points"],
-        owned_item_ids=owned_item_ids,
-        items=[ShopItem(**item) for item in SHOP_CATALOG],
-        equipped=get_equipped_map(supabase, user_id),
-    )
+    return build_shop_state(supabase, user_id)
 
 
 @app.post("/shop/purchase", response_model=ShopState)
@@ -958,13 +1293,7 @@ def purchase_item(purchase: PurchaseRequest, user_id: CurrentUserId):
         raise HTTPException(status_code=404, detail="Item not found")
 
     stats = get_or_create_stats_row(supabase, user_id)
-    purchases_response = (
-        supabase.table("shop_purchases")
-        .select("item_id")
-        .eq("user_id", user_id)
-        .execute()
-    )
-    owned_item_ids = [row["item_id"] for row in purchases_response.data]
+    owned_item_ids = ensure_starter_items(supabase, user_id)
     if purchase.item_id in owned_item_ids:
         raise HTTPException(status_code=400, detail="You already own this item")
     if stats["points"] < item["price"]:
@@ -979,21 +1308,28 @@ def purchase_item(purchase: PurchaseRequest, user_id: CurrentUserId):
     ).execute()
     owned_item_ids.append(purchase.item_id)
 
-    # Auto-equip a freshly bought item if that slot is empty so far — nice
-    # for slots like "face" or "neck" that (for now) only ever have one
-    # item in them, so buying it just works with no extra step.
+    # Auto-equip a freshly bought item if that slot is empty — or always
+    # equip free starters so claiming Classic Pigtails switches hair immediately.
     equipped = get_equipped_map(supabase, user_id)
-    if item["slot"] not in equipped:
-        supabase.table("equipped_items").upsert(
-            {"user_id": user_id, "slot": item["slot"], "item_id": item["id"]},
-            on_conflict="user_id,slot",
-        ).execute()
-        equipped[item["slot"]] = item["id"]
+    should_auto_equip = (
+        item["id"] in FREE_STARTER_ITEM_IDS or item["slot"] not in equipped
+    )
+    if should_auto_equip:
+        if item["id"] in CUSTOM_HAIR_IDS and equipped.get("head"):
+            _unequip_slot(supabase, user_id, "head")
+        if item["slot"] == "head" and equipped.get("hair") in CUSTOM_HAIR_IDS:
+            pass  # don't auto-equip hats over custom hair
+        else:
+            _equip_slot(supabase, user_id, item["slot"], item["id"])
+            equipped = get_equipped_map(supabase, user_id)
 
-    return ShopState(
-        points=new_points,
+    stats = get_or_create_stats_row(supabase, user_id)
+    stats = {**stats, "points": new_points}
+    return build_shop_state(
+        supabase,
+        user_id,
+        stats=stats,
         owned_item_ids=owned_item_ids,
-        items=[ShopItem(**i) for i in SHOP_CATALOG],
         equipped=equipped,
     )
 
@@ -1005,51 +1341,455 @@ def equip_item(equip: EquipRequest, user_id: CurrentUserId):
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
 
-    purchases_response = (
-        supabase.table("shop_purchases")
-        .select("item_id")
-        .eq("user_id", user_id)
-        .execute()
-    )
-    owned_item_ids = [row["item_id"] for row in purchases_response.data]
-    if equip.item_id not in owned_item_ids:
+    owned_item_ids = ensure_starter_items(supabase, user_id)
+    if (
+        equip.item_id not in owned_item_ids
+        and equip.item_id not in FREE_STARTER_ITEM_IDS
+    ):
         raise HTTPException(status_code=400, detail="You don't own this item yet")
 
-    supabase.table("equipped_items").upsert(
-        {"user_id": user_id, "slot": item["slot"], "item_id": item["id"]},
-        on_conflict="user_id,slot",
-    ).execute()
+    equipped = get_equipped_map(supabase, user_id)
+    current_hair = equipped.get("hair")
 
-    stats = get_or_create_stats_row(supabase, user_id)
-    return ShopState(
-        points=stats["points"],
-        owned_item_ids=owned_item_ids,
-        items=[ShopItem(**i) for i in SHOP_CATALOG],
-        equipped=get_equipped_map(supabase, user_id),
+    # Hats only with classic pigtails (or no custom updo equipped).
+    if item["slot"] == "head" and current_hair in CUSTOM_HAIR_IDS:
+        raise HTTPException(
+            status_code=400,
+            detail="Hats only work with Classic Pigtails. Switch hair first.",
+        )
+
+    # Switching to a custom updo removes any hat.
+    if item["id"] in CUSTOM_HAIR_IDS and equipped.get("head"):
+        _unequip_slot(supabase, user_id, "head")
+
+    _equip_slot(supabase, user_id, item["slot"], item["id"])
+
+    return build_shop_state(
+        supabase, user_id, owned_item_ids=owned_item_ids
     )
 
 
 @app.post("/shop/unequip", response_model=ShopState)
 def unequip_item(unequip: UnequipRequest, user_id: CurrentUserId):
     supabase = get_supabase()
-    supabase.table("equipped_items").upsert(
-        {"user_id": user_id, "slot": unequip.slot, "item_id": None},
-        on_conflict="user_id,slot",
-    ).execute()
+    _unequip_slot(supabase, user_id, unequip.slot)
 
-    stats = get_or_create_stats_row(supabase, user_id)
-    purchases_response = (
-        supabase.table("shop_purchases")
-        .select("item_id")
+    owned_item_ids = ensure_starter_items(supabase, user_id)
+    equipped = get_equipped_map(supabase, user_id)
+    # Taking off hair falls back to Classic Pigtails (always equippable).
+    if unequip.slot == "hair":
+        equipped = ensure_classic_hair_equipped(supabase, user_id, equipped)
+
+    return build_shop_state(
+        supabase,
+        user_id,
+        owned_item_ids=owned_item_ids,
+        equipped=equipped,
+    )
+
+
+def _notes_for_subject(
+    supabase: Client, user_id: str, subject_id: Optional[str], subject_name: str
+) -> str:
+    query = (
+        supabase.table("daily_learning_entries")
+        .select("content, subject, created_at")
         .eq("user_id", user_id)
+        .order("created_at", desc=True)
+        .limit(6)
+    )
+    if subject_id:
+        query = query.eq("subject_id", subject_id)
+    else:
+        query = query.eq("subject", subject_name)
+    rows = query.execute().data or []
+    return "\n\n".join(
+        (row.get("content") or "").strip() for row in rows if row.get("content")
+    )
+
+
+def _pick_review_entry(
+    supabase: Client,
+    user_id: str,
+    subject_id: Optional[str],
+    subject_name: str,
+    topic: str,
+) -> Optional[dict]:
+    """Pick one notes entry for the student to review before teaching Ara."""
+    query = (
+        supabase.table("daily_learning_entries")
+        .select("id, subject, unit, content, created_at, subject_id")
+        .eq("user_id", user_id)
+        .order("created_at", desc=True)
+        .limit(20)
+    )
+    if subject_id:
+        query = query.eq("subject_id", subject_id)
+    else:
+        query = query.eq("subject", subject_name)
+    rows = [r for r in (query.execute().data or []) if (r.get("content") or "").strip()]
+    if not rows:
+        # Fall back to any recent notes for this user.
+        rows = [
+            r
+            for r in (
+                supabase.table("daily_learning_entries")
+                .select("id, subject, unit, content, created_at, subject_id")
+                .eq("user_id", user_id)
+                .order("created_at", desc=True)
+                .limit(10)
+                .execute()
+                .data
+                or []
+            )
+            if (r.get("content") or "").strip()
+        ]
+    if not rows:
+        return None
+
+    topic_words = [
+        w for w in topic.lower().replace("/", " ").replace("-", " ").split() if len(w) > 2
+    ]
+
+    def score(row: dict) -> tuple:
+        text = f"{row.get('unit') or ''} {row.get('content') or ''}".lower()
+        hits = sum(1 for w in topic_words if w in text)
+        return (hits, row.get("created_at") or "")
+
+    rows.sort(key=score, reverse=True)
+    return rows[0]
+
+
+def _teach_topic_choices(user_id: str) -> list[TeachTopic]:
+    """Prefer weak quiz topics; fall back to recent learning subjects/units."""
+    supabase = get_supabase()
+    topics: list[TeachTopic] = []
+    seen: set[tuple[str, str]] = set()
+
+    quizzes_response = (
+        supabase.table("quizzes")
+        .select(
+            "id, subject_id, subject, questions, submitted_answers, completed_at"
+        )
+        .eq("user_id", user_id)
+        .not_.is_("completed_at", "null")
+        .order("completed_at", desc=True)
+        .limit(MISS_LOOKBACK_QUIZZES)
         .execute()
     )
-    owned_item_ids = [row["item_id"] for row in purchases_response.data]
-    return ShopState(
-        points=stats["points"],
-        owned_item_ids=owned_item_ids,
-        items=[ShopItem(**i) for i in SHOP_CATALOG],
-        equipped=get_equipped_map(supabase, user_id),
+    misses = collect_misses_from_quizzes(quizzes_response.data or [])
+    for row in summarize_miss_topics(
+        [{"question": m["question"], "subject": m["subject"]} for m in misses]
+    ):
+        key = (row["topic"].lower(), row["subject"].lower())
+        if key in seen:
+            continue
+        seen.add(key)
+        subject_id = next(
+            (
+                m.get("subject_id")
+                for m in misses
+                if (m.get("subject") or "") == row["subject"]
+            ),
+            None,
+        )
+        topics.append(
+            TeachTopic(
+                topic=row["topic"],
+                subject=row["subject"],
+                subject_id=subject_id,
+                reason="struggling",
+            )
+        )
+
+    entries = (
+        supabase.table("daily_learning_entries")
+        .select("subject_id, subject, unit, content, created_at")
+        .eq("user_id", user_id)
+        .order("created_at", desc=True)
+        .limit(12)
+        .execute()
+        .data
+        or []
+    )
+    for row in entries:
+        subject = (row.get("subject") or "").strip() or "General"
+        unit = (row.get("unit") or "").strip()
+        topic = unit if unit else f"What I learned in {subject}"
+        key = (topic.lower(), subject.lower())
+        if key in seen:
+            continue
+        seen.add(key)
+        topics.append(
+            TeachTopic(
+                topic=topic,
+                subject=subject,
+                subject_id=row.get("subject_id"),
+                reason="learning",
+            )
+        )
+
+    subjects = (
+        supabase.table("subjects")
+        .select("id, name, unit")
+        .eq("user_id", user_id)
+        .order("created_at", desc=True)
+        .limit(8)
+        .execute()
+        .data
+        or []
+    )
+    for row in subjects:
+        subject = (row.get("name") or "").strip()
+        unit = (row.get("unit") or "").strip()
+        if not subject:
+            continue
+        topic = unit or subject
+        key = (topic.lower(), subject.lower())
+        if key in seen:
+            continue
+        seen.add(key)
+        topics.append(
+            TeachTopic(
+                topic=topic,
+                subject=subject,
+                subject_id=row.get("id"),
+                reason="learning",
+            )
+        )
+
+    return topics[:12]
+
+
+def _load_ara_memories(
+    supabase: Client,
+    user_id: str,
+    subject: Optional[str] = None,
+    subject_id: Optional[str] = None,
+    limit: int = 8,
+) -> list[dict]:
+    """Recent lesson memories for this user, preferring the current subject."""
+    try:
+        query = (
+            supabase.table("ara_memories")
+            .select("topic, subject, summary, created_at, subject_id")
+            .eq("user_id", user_id)
+            .order("created_at", desc=True)
+            .limit(40)
+        )
+        rows = query.execute().data or []
+    except Exception:
+        # Table may not exist until migration 004 is run.
+        return []
+
+    if not rows:
+        return []
+
+    preferred = []
+    others = []
+    subject_key = (subject or "").strip().lower()
+    for row in rows:
+        if subject_id and row.get("subject_id") == subject_id:
+            preferred.append(row)
+        elif subject_key and (row.get("subject") or "").strip().lower() == subject_key:
+            preferred.append(row)
+        else:
+            others.append(row)
+    return (preferred + others)[:limit]
+
+
+def _save_ara_memory(
+    supabase: Client,
+    user_id: str,
+    subject: str,
+    topic: str,
+    summary: str,
+    subject_id: Optional[str] = None,
+) -> bool:
+    summary = (summary or "").strip()
+    if not summary:
+        return False
+    payload = {
+        "user_id": user_id,
+        "subject": subject.strip(),
+        "topic": topic.strip(),
+        "summary": summary[:600],
+        "source": "teach_ara",
+    }
+    if subject_id:
+        payload["subject_id"] = subject_id
+    try:
+        supabase.table("ara_memories").insert(payload).execute()
+        return True
+    except Exception:
+        return False
+
+
+@app.get("/teach-ara/topics", response_model=TeachTopicsResponse)
+def list_teach_topics(user_id: CurrentUserId):
+    return TeachTopicsResponse(topics=_teach_topic_choices(user_id))
+
+
+@app.post("/teach-ara/start", response_model=TeachStartResponse)
+def start_teach_ara(body: TeachStartRequest, user_id: CurrentUserId):
+    choices = _teach_topic_choices(user_id)
+    picked: Optional[TeachTopic] = None
+    if body.topic and body.subject:
+        picked = TeachTopic(
+            topic=body.topic.strip(),
+            subject=body.subject.strip(),
+            subject_id=body.subject_id,
+            reason="learning",
+        )
+    elif choices:
+        # Prefer struggling topics when available.
+        struggling = [t for t in choices if t.reason == "struggling"]
+        pool = struggling or choices
+        picked = random.choice(pool)
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Add a subject or some notes first — then Ara will have "
+                "something to learn from you."
+            ),
+        )
+
+    supabase = get_supabase()
+    notes = _notes_for_subject(
+        supabase, user_id, picked.subject_id, picked.subject
+    )
+    memories = _load_ara_memories(
+        supabase,
+        user_id,
+        subject=picked.subject,
+        subject_id=picked.subject_id,
+    )
+    review_row = _pick_review_entry(
+        supabase, user_id, picked.subject_id, picked.subject, picked.topic
+    )
+    try:
+        message = teach_ara_opener(
+            picked.subject, picked.topic, notes, memories=memories
+        )
+    except QuizGenerationError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    review_entry = None
+    review_prompt = ""
+    if review_row:
+        review_entry = TeachReviewEntry(
+            id=review_row["id"],
+            subject=review_row.get("subject") or picked.subject,
+            unit=review_row.get("unit"),
+            content=(review_row.get("content") or "").strip(),
+            created_at=review_row.get("created_at") or "",
+        )
+        review_prompt = (
+            f"Before you teach me about {picked.topic}, review this notes "
+            f"entry first. When you're ready, close it and explain it to me "
+            f"in your own words!"
+        )
+
+    past_memories = [
+        AraMemoryCard(
+            topic=row.get("topic") or "",
+            subject=row.get("subject") or "",
+            summary=row.get("summary") or "",
+        )
+        for row in memories
+        if row.get("topic") and row.get("summary")
+    ]
+
+    return TeachStartResponse(
+        topic=picked.topic,
+        subject=picked.subject,
+        subject_id=picked.subject_id,
+        message=message,
+        review_prompt=review_prompt,
+        review_entry=review_entry,
+        past_memories=past_memories,
+    )
+
+
+@app.post("/teach-ara/message", response_model=TeachMessageResponse)
+def message_teach_ara(body: TeachMessageRequest, user_id: CurrentUserId):
+    supabase = get_supabase()
+    notes = _notes_for_subject(
+        supabase, user_id, body.subject_id, body.subject
+    )
+    memories = _load_ara_memories(
+        supabase,
+        user_id,
+        subject=body.subject,
+        subject_id=body.subject_id,
+    )
+    history = [
+        {"role": turn.role, "content": turn.content}
+        for turn in body.history
+        if turn.role in ("user", "ara") and turn.content.strip()
+    ]
+    try:
+        result = teach_ara_reply(
+            subject=body.subject,
+            topic=body.topic,
+            user_message=body.message,
+            history=history,
+            notes=notes,
+            memories=memories,
+        )
+    except QuizGenerationError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    lesson_summary = result.get("lesson_summary") or ""
+    memory_saved = False
+    if result.get("status") == "understood" and lesson_summary:
+        memory_saved = _save_ara_memory(
+            supabase,
+            user_id=user_id,
+            subject=body.subject,
+            topic=body.topic,
+            summary=lesson_summary,
+            subject_id=body.subject_id,
+        )
+
+    return TeachMessageResponse(
+        status=result["status"],
+        message=result["message"],
+        follow_up=result.get("follow_up") or "",
+        lesson_summary=lesson_summary if memory_saved else "",
+        memory_saved=memory_saved,
+    )
+
+
+@app.post("/homework/help", response_model=HomeworkHelpResponse)
+def homework_help(body: HomeworkHelpRequest, user_id: CurrentUserId):
+    question = (body.question or "").strip()
+    has_image = bool(body.image_base64 and body.image_mime)
+    if not question and not has_image:
+        raise HTTPException(
+            status_code=400,
+            detail="Type a question or attach a homework photo.",
+        )
+
+    history = [
+        {"role": turn.role, "content": turn.content}
+        for turn in body.history
+        if turn.role in ("user", "ara") and turn.content.strip()
+    ]
+    try:
+        result = homework_help_reply(
+            question=question,
+            history=history,
+            image_base64=body.image_base64,
+            image_mime=body.image_mime,
+        )
+    except QuizGenerationError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    return HomeworkHelpResponse(
+        message=result["message"],
+        follow_up=result.get("follow_up") or "",
     )
 
 

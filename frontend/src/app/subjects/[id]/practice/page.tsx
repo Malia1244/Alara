@@ -2,17 +2,27 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 import AraAvatar from "@/components/AraAvatar";
+import { IconTeach } from "@/components/nav-icons";
 import {
   createPracticeDeck,
   fetchSubject,
   type Flashcard,
-  type PracticeDeck,
   type Subject,
 } from "@/lib/api";
 
-type Mode = "set" | "flashcards" | "learn" | "write" | "match" | "test";
+type Mode = "hub" | "flashcards" | "learn" | "write" | "match" | "test";
+
+const BATCH_SIZE = 5;
+const MAX_CARDS = 25;
 
 function shuffle<T>(items: T[]): T[] {
   const copy = [...items];
@@ -32,7 +42,6 @@ function answersClose(a: string, b: string) {
   const right = normalize(b);
   if (!left || !right) return false;
   if (left === right) return true;
-  // Soft match: ignore light punctuation so typing isn't too harsh.
   const strip = (s: string) => s.replace(/[.,!?;:'"()-]/g, "");
   return strip(left) === strip(right);
 }
@@ -54,7 +63,7 @@ function ModeChrome({
           onClick={onExit}
           className="text-sm font-semibold text-brand hover:underline"
         >
-          ← Study set
+          ← Practice
         </button>
         <h2 className="font-display text-lg font-bold text-stone-900">{title}</h2>
         <span className="w-16" />
@@ -67,19 +76,46 @@ function ModeChrome({
 function FlashcardsMode({
   cards,
   onExit,
+  onNeedMore,
+  canLoadMore,
+  loadingMore,
 }: {
   cards: Flashcard[];
   onExit: () => void;
+  onNeedMore: () => void;
+  canLoadMore: boolean;
+  loadingMore: boolean;
 }) {
   const [order, setOrder] = useState(() => cards.map((_, i) => i));
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const card = cards[order[index]];
-  const progress = ((index + 1) / order.length) * 100;
+  const progress = cards.length ? ((index + 1) / order.length) * 100 : 0;
+
+  useEffect(() => {
+    setOrder(cards.map((_, i) => i));
+  }, [cards.length]);
 
   function go(next: number) {
+    if (next >= order.length) {
+      if (canLoadMore) {
+        onNeedMore();
+        return;
+      }
+      setFlipped(false);
+      setIndex(0);
+      return;
+    }
     setFlipped(false);
     setIndex((next + order.length) % order.length);
+  }
+
+  if (!card) {
+    return (
+      <ModeChrome title="Flashcards" onExit={onExit}>
+        <p className="text-sm text-muted">Generating cards…</p>
+      </ModeChrome>
+    );
   }
 
   return (
@@ -92,14 +128,15 @@ function FlashcardsMode({
       </div>
       <p className="text-center text-xs font-semibold text-muted">
         {index + 1} / {order.length}
+        {canLoadMore ? " · more unlock as you go" : ""}
       </p>
       <button
         type="button"
         onClick={() => setFlipped((f) => !f)}
-        className="flex min-h-64 w-full flex-col items-center justify-center rounded-[1.75rem] border border-border bg-white px-8 py-12 text-center shadow-[0_20px_50px_-30px_rgba(28,25,23,0.4)] transition-transform active:scale-[0.99]"
+        className="flex min-h-64 w-full flex-col items-center justify-center rounded-[1.75rem] border border-border bg-surface px-8 py-12 text-center shadow-[0_20px_50px_-30px_rgba(28,25,23,0.4)] transition-transform active:scale-[0.99]"
       >
         <span className="mb-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
-          {flipped ? "Definition" : "Term"} · click to flip
+          {flipped ? "Answer" : "Prompt"} · click to flip
         </span>
         <p className="font-display text-2xl font-bold leading-snug text-stone-900 sm:text-3xl">
           {flipped ? card.back : card.front}
@@ -127,16 +164,29 @@ function FlashcardsMode({
         <button
           type="button"
           onClick={() => go(index + 1)}
-          className="rounded-2xl bg-brand px-5 py-2.5 text-sm font-semibold text-white hover:bg-teal-700"
+          disabled={loadingMore}
+          className="rounded-2xl bg-brand px-5 py-2.5 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-50"
         >
-          →
+          {loadingMore ? "…" : "→"}
         </button>
       </div>
     </ModeChrome>
   );
 }
 
-function LearnMode({ cards, onExit }: { cards: Flashcard[]; onExit: () => void }) {
+function LearnMode({
+  cards,
+  onExit,
+  onNeedMore,
+  canLoadMore,
+  loadingMore,
+}: {
+  cards: Flashcard[];
+  onExit: () => void;
+  onNeedMore: () => void;
+  canLoadMore: boolean;
+  loadingMore: boolean;
+}) {
   const deck = useMemo(() => shuffle(cards), [cards]);
   const [index, setIndex] = useState(0);
   const [picked, setPicked] = useState<string | null>(null);
@@ -167,6 +217,21 @@ function LearnMode({ cards, onExit }: { cards: Flashcard[]; onExit: () => void }
           total={deck.length}
           pose={correctCount === deck.length ? "cheer" : "proud"}
         />
+        {canLoadMore && (
+          <button
+            type="button"
+            disabled={loadingMore}
+            onClick={() => {
+              setIndex(0);
+              setPicked(null);
+              setCorrectCount(0);
+              onNeedMore();
+            }}
+            className="self-center rounded-2xl bg-brand px-5 py-2.5 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-50"
+          >
+            {loadingMore ? "Making more…" : "Keep going · new batch"}
+          </button>
+        )}
       </ModeChrome>
     );
   }
@@ -176,9 +241,9 @@ function LearnMode({ cards, onExit }: { cards: Flashcard[]; onExit: () => void }
       <p className="text-center text-xs font-semibold text-muted">
         {index + 1} / {deck.length} · multiple choice
       </p>
-      <div className="rounded-[1.75rem] border border-border bg-white px-6 py-8 text-center shadow-sm">
+      <div className="rounded-[1.75rem] border border-border bg-surface px-6 py-8 text-center shadow-sm">
         <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
-          Term
+          Prompt
         </p>
         <p className="mt-2 font-display text-2xl font-bold text-stone-900">
           {card.front}
@@ -226,7 +291,19 @@ function LearnMode({ cards, onExit }: { cards: Flashcard[]; onExit: () => void }
   );
 }
 
-function WriteMode({ cards, onExit }: { cards: Flashcard[]; onExit: () => void }) {
+function WriteMode({
+  cards,
+  onExit,
+  onNeedMore,
+  canLoadMore,
+  loadingMore,
+}: {
+  cards: Flashcard[];
+  onExit: () => void;
+  onNeedMore: () => void;
+  canLoadMore: boolean;
+  loadingMore: boolean;
+}) {
   const deck = useMemo(() => shuffle(cards), [cards]);
   const [index, setIndex] = useState(0);
   const [answer, setAnswer] = useState("");
@@ -252,6 +329,22 @@ function WriteMode({ cards, onExit }: { cards: Flashcard[]; onExit: () => void }
           total={deck.length}
           pose={correctCount === deck.length ? "cheer" : "encourage"}
         />
+        {canLoadMore && (
+          <button
+            type="button"
+            disabled={loadingMore}
+            onClick={() => {
+              setIndex(0);
+              setAnswer("");
+              setStatus("idle");
+              setCorrectCount(0);
+              onNeedMore();
+            }}
+            className="self-center rounded-2xl bg-brand px-5 py-2.5 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-50"
+          >
+            {loadingMore ? "Making more…" : "Keep going · new batch"}
+          </button>
+        )}
       </ModeChrome>
     );
   }
@@ -259,11 +352,11 @@ function WriteMode({ cards, onExit }: { cards: Flashcard[]; onExit: () => void }
   return (
     <ModeChrome title="Write" onExit={onExit}>
       <p className="text-center text-xs font-semibold text-muted">
-        {index + 1} / {deck.length} · type the definition
+        {index + 1} / {deck.length} · type the answer
       </p>
-      <div className="rounded-[1.75rem] border border-border bg-white px-6 py-8 text-center">
+      <div className="rounded-[1.75rem] border border-border bg-surface px-6 py-8 text-center">
         <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
-          Term
+          Prompt
         </p>
         <p className="mt-2 font-display text-2xl font-bold text-stone-900">
           {card.front}
@@ -313,9 +406,8 @@ function WriteMode({ cards, onExit }: { cards: Flashcard[]; onExit: () => void }
 }
 
 function MatchMode({ cards, onExit }: { cards: Flashcard[]; onExit: () => void }) {
-  // Quizlet-style: all tiles face-up; click a term then its definition.
   const pairs = useMemo(() => shuffle(cards).slice(0, 6), [cards]);
-  type Tile = { id: string; pairId: number; text: string; side: "term" | "def" };
+  type Tile = { id: string; pairId: number; text: string; side: "a" | "b" };
   const [tiles, setTiles] = useState<Tile[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [matched, setMatched] = useState<Set<number>>(new Set());
@@ -327,10 +419,13 @@ function MatchMode({ cards, onExit }: { cards: Flashcard[]; onExit: () => void }
   useEffect(() => {
     const built: Tile[] = [];
     pairs.forEach((card, pairId) => {
-      built.push({ id: `t-${pairId}`, pairId, text: card.front, side: "term" });
-      built.push({ id: `d-${pairId}`, pairId, text: card.back, side: "def" });
+      built.push({ id: `a-${pairId}`, pairId, text: card.front, side: "a" });
+      built.push({ id: `b-${pairId}`, pairId, text: card.back, side: "b" });
     });
     setTiles(shuffle(built));
+    setMatched(new Set());
+    setSelected(null);
+    setFinishedAt(null);
   }, [pairs]);
 
   useEffect(() => {
@@ -385,8 +480,8 @@ function MatchMode({ cards, onExit }: { cards: Flashcard[]; onExit: () => void }
       </div>
       {done ? (
         <Results
-          title="New match time!"
-          subtitle={`You cleared the board in ${seconds} seconds`}
+          title="Board cleared!"
+          subtitle={`You finished in ${seconds} seconds`}
           known={pairs.length}
           total={pairs.length}
           pose="cheer"
@@ -423,21 +518,35 @@ function MatchMode({ cards, onExit }: { cards: Flashcard[]; onExit: () => void }
   );
 }
 
-function TestMode({ cards, onExit }: { cards: Flashcard[]; onExit: () => void }) {
+function TestMode({
+  cards,
+  onExit,
+  onNeedMore,
+  canLoadMore,
+  loadingMore,
+}: {
+  cards: Flashcard[];
+  onExit: () => void;
+  onNeedMore: () => void;
+  canLoadMore: boolean;
+  loadingMore: boolean;
+}) {
   const questions = useMemo(() => {
-    return shuffle(cards).slice(0, Math.min(8, cards.length)).map((card, i) => {
-      const kind: "mc" | "write" = i % 2 === 0 ? "mc" : "write";
-      const options =
-        kind === "mc"
-          ? shuffle([
-              card.back,
-              ...shuffle(
-                cards.filter((c) => c.back !== card.back).map((c) => c.back)
-              ).slice(0, 3),
-            ])
-          : [];
-      return { card, kind, options };
-    });
+    return shuffle(cards)
+      .slice(0, Math.min(8, cards.length))
+      .map((card, i) => {
+        const kind: "mc" | "write" = i % 2 === 0 ? "mc" : "write";
+        const options =
+          kind === "mc"
+            ? shuffle([
+                card.back,
+                ...shuffle(
+                  cards.filter((c) => c.back !== card.back).map((c) => c.back)
+                ).slice(0, 3),
+              ])
+            : [];
+        return { card, kind, options };
+      });
   }, [cards]);
 
   const [index, setIndex] = useState(0);
@@ -476,6 +585,22 @@ function TestMode({ cards, onExit }: { cards: Flashcard[]; onExit: () => void })
                 : "encourage"
           }
         />
+        {canLoadMore && (
+          <button
+            type="button"
+            disabled={loadingMore}
+            onClick={() => {
+              setIndex(0);
+              setAnswer("");
+              setScore(0);
+              setGraded(false);
+              onNeedMore();
+            }}
+            className="self-center rounded-2xl bg-brand px-5 py-2.5 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-50"
+          >
+            {loadingMore ? "Making more…" : "New test batch"}
+          </button>
+        )}
       </ModeChrome>
     );
   }
@@ -485,7 +610,7 @@ function TestMode({ cards, onExit }: { cards: Flashcard[]; onExit: () => void })
       <p className="text-center text-xs font-semibold text-muted">
         Question {index + 1} / {questions.length}
       </p>
-      <div className="rounded-[1.75rem] border border-border bg-white px-6 py-8 text-center">
+      <div className="rounded-[1.75rem] border border-border bg-surface px-6 py-8 text-center">
         <p className="font-display text-xl font-bold text-stone-900">
           {current.card.front}
         </p>
@@ -518,7 +643,7 @@ function TestMode({ cards, onExit }: { cards: Flashcard[]; onExit: () => void })
             value={answer}
             onChange={(e) => setAnswer(e.target.value)}
             disabled={graded}
-            placeholder="Write the definition..."
+            placeholder="Write your answer..."
             className="w-full rounded-2xl border border-border px-4 py-3 text-sm outline-none focus:border-brand focus:shadow-[0_0_0_4px_rgba(15,118,110,0.12)]"
           />
           {!graded && (
@@ -569,7 +694,7 @@ function Results({
 }) {
   return (
     <div className="rounded-[1.75rem] border border-border bg-surface px-6 py-10 text-center">
-      <AraAvatar size={80} pose={pose} showOutfits={false} />
+      <AraAvatar size={80} pose={pose} />
       <p className="mt-3 font-display text-xl font-bold text-stone-900">{title}</p>
       <p className="mt-1 text-sm text-muted">
         {subtitle ?? `${known} / ${total} correct`}
@@ -580,9 +705,15 @@ function Results({
 
 const STUDY_MODES = [
   {
+    id: "teach" as const,
+    title: "Teach Ara",
+    hint: "Explain topics at her desk",
+    tone: "bg-teal-50 text-teal-700",
+  },
+  {
     id: "flashcards" as const,
     title: "Flashcards",
-    hint: "Flip terms & definitions",
+    hint: "Flip prompt & answer",
     tone: "bg-sky-50 text-sky-700",
   },
   {
@@ -607,7 +738,7 @@ const STUDY_MODES = [
     id: "test" as const,
     title: "Test",
     hint: "Scored practice exam",
-    tone: "bg-teal-50 text-teal-700",
+    tone: "bg-emerald-50 text-emerald-700",
   },
 ];
 
@@ -616,11 +747,14 @@ export default function PracticePage() {
   const subjectId = params.id;
 
   const [subject, setSubject] = useState<Subject | null>(null);
-  const [deck, setDeck] = useState<PracticeDeck | null>(null);
-  const [mode, setMode] = useState<Mode>("set");
+  const [cards, setCards] = useState<Flashcard[]>([]);
+  const [mode, setMode] = useState<Mode>("hub");
   const [isLoading, setIsLoading] = useState(true);
   const [isBuilding, setIsBuilding] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const canLoadMore = cards.length < MAX_CARDS;
 
   const loadSubject = useCallback(async () => {
     try {
@@ -638,22 +772,66 @@ export default function PracticePage() {
     void loadSubject();
   }, [loadSubject]);
 
-  async function buildDeck() {
+  async function ensureBatch(opts?: { forceNew?: boolean }) {
+    if (cards.length > 0 && !opts?.forceNew) return cards;
     setIsBuilding(true);
     setError(null);
     try {
-      const data = await createPracticeDeck(subjectId);
-      setDeck(data);
-      setMode("set");
+      const data = await createPracticeDeck(subjectId, {
+        count: BATCH_SIZE,
+        exclude_fronts: opts?.forceNew
+          ? []
+          : cards.map((c) => c.front),
+      });
+      setCards(data.cards);
+      return data.cards;
     } catch (err) {
       setError(
         err instanceof Error
           ? err.message
-          : "Couldn't build this study set right now."
+          : "Couldn't build practice cards right now."
       );
+      return [];
     } finally {
       setIsBuilding(false);
     }
+  }
+
+  async function loadMoreCards() {
+    if (!canLoadMore || loadingMore) return;
+    setLoadingMore(true);
+    setError(null);
+    try {
+      const remaining = MAX_CARDS - cards.length;
+      const data = await createPracticeDeck(subjectId, {
+        count: Math.min(BATCH_SIZE, remaining),
+        exclude_fronts: cards.map((c) => c.front),
+      });
+      setCards((prev) => {
+        const seen = new Set(prev.map((c) => c.front.toLowerCase()));
+        const next = data.cards.filter(
+          (c) => !seen.has(c.front.toLowerCase())
+        );
+        return [...prev, ...next].slice(0, MAX_CARDS);
+      });
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Couldn't generate more cards."
+      );
+    } finally {
+      setLoadingMore(false);
+    }
+  }
+
+  async function openMode(next: Mode) {
+    setError(null);
+    if (next === "hub") {
+      setMode("hub");
+      return;
+    }
+    const ready = await ensureBatch();
+    if (ready.length === 0) return;
+    setMode(next);
   }
 
   return (
@@ -667,16 +845,16 @@ export default function PracticePage() {
             ← Back to subject
           </Link>
           <div className="flex items-end gap-4">
-            <AraAvatar size={64} pose="think" showOutfits={false} priority />
+            <AraAvatar size={64} pose="think" priority />
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand">
-                Study set
+                Practice
               </p>
               <h1 className="font-display text-3xl font-bold tracking-tight text-stone-900">
                 {subject ? `${subject.name} · ${subject.unit}` : "Loading..."}
               </h1>
               <p className="mt-1 text-sm text-muted">
-                Quizlet-style practice from your notes
+                Pick a mode — cards generate in small batches as you go
               </p>
             </div>
           </div>
@@ -685,44 +863,36 @@ export default function PracticePage() {
         {isLoading && <p className="text-sm text-muted">Loading...</p>}
         {error && <p className="text-sm text-rose-500">{error}</p>}
 
-        {!isLoading && !deck && (
-          <div className="rounded-[1.75rem] border border-border bg-surface p-7">
-            <p className="font-display text-lg font-bold text-stone-900">
-              Create your study set
-            </p>
-            <p className="mt-1 text-sm text-muted">
-              Ara turns your logged notes into terms & definitions — then you
-              can study with Flashcards, Learn, Write, Match, or Test.
-            </p>
-            <button
-              type="button"
-              onClick={() => void buildDeck()}
-              disabled={isBuilding}
-              className="mt-5 rounded-2xl bg-brand px-5 py-2.5 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-50"
-            >
-              {isBuilding ? "Building set..." : "Create study set"}
-            </button>
-          </div>
-        )}
-
-        {deck && mode === "set" && (
-          <div className="flex flex-col gap-6">
-            <section className="flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <h2 className="font-display text-lg font-bold text-stone-900">
-                  Study
-                </h2>
-                <span className="text-xs font-semibold text-muted">
-                  {deck.cards.length} terms
-                </span>
-              </div>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-                {STUDY_MODES.map((item) => (
+        {!isLoading && mode === "hub" && (
+          <div className="flex flex-col gap-5">
+            <section className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {STUDY_MODES.map((item) => {
+                if (item.id === "teach") {
+                  return (
+                    <Link
+                      key={item.id}
+                      href={`/teach-ara?subject_id=${subjectId}`}
+                      className="interactive-tile flex flex-col gap-2 rounded-[1.25rem] border border-border bg-surface p-4 text-left"
+                    >
+                      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-teal-50 text-teal-700">
+                        <IconTeach className="h-5 w-5" />
+                      </span>
+                      <span className="font-display text-sm font-bold text-stone-900">
+                        {item.title}
+                      </span>
+                      <span className="text-[11px] leading-snug text-muted">
+                        {item.hint}
+                      </span>
+                    </Link>
+                  );
+                }
+                return (
                   <button
                     key={item.id}
                     type="button"
-                    onClick={() => setMode(item.id)}
-                    className="interactive-tile flex flex-col gap-2 rounded-[1.25rem] border border-border bg-surface p-4 text-left"
+                    disabled={isBuilding}
+                    onClick={() => void openMode(item.id)}
+                    className="interactive-tile flex flex-col gap-2 rounded-[1.25rem] border border-border bg-surface p-4 text-left disabled:opacity-60"
                   >
                     <span
                       className={`w-fit rounded-lg px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${item.tone}`}
@@ -736,67 +906,81 @@ export default function PracticePage() {
                       {item.hint}
                     </span>
                   </button>
-                ))}
-              </div>
+                );
+              })}
             </section>
 
-            <section className="flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <h2 className="font-display text-lg font-bold text-stone-900">
-                  Terms in this set
-                </h2>
-                <button
-                  type="button"
-                  onClick={() => void buildDeck()}
-                  disabled={isBuilding}
-                  className="text-xs font-semibold text-brand hover:underline disabled:opacity-50"
-                >
-                  {isBuilding ? "Refreshing..." : "Rebuild from notes"}
-                </button>
-              </div>
-              <ul className="flex flex-col overflow-hidden rounded-[1.75rem] border border-border bg-surface">
-                {deck.cards.map((card, i) => (
-                  <li
-                    key={`${card.front}-${i}`}
-                    className={`grid grid-cols-1 gap-2 px-5 py-4 sm:grid-cols-2 ${
-                      i > 0 ? "border-t border-border" : ""
-                    }`}
-                  >
-                    <div>
-                      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">
-                        Term
-                      </p>
-                      <p className="mt-1 text-sm font-semibold text-stone-900">
-                        {card.front}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">
-                        Definition
-                      </p>
-                      <p className="mt-1 text-sm text-stone-600">{card.back}</p>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </section>
+            <div className="rounded-[1.5rem] border border-dashed border-border bg-brand-soft/30 px-5 py-4 text-sm text-brand-ink">
+              {isBuilding ? (
+                <p>Ara is making your first practice batch…</p>
+              ) : cards.length > 0 ? (
+                <p>
+                  Ready with {cards.length} card
+                  {cards.length === 1 ? "" : "s"}
+                  {canLoadMore
+                    ? ` · up to ${MAX_CARDS} as you keep practicing`
+                    : " · batch cap reached"}
+                  . Prompts stay hidden until you play a mode.
+                </p>
+              ) : (
+                <p>
+                  No term list here — choose a mode and Ara will generate a
+                  small batch from your notes (then more as you continue).
+                </p>
+              )}
+            </div>
+
+            {cards.length > 0 && (
+              <button
+                type="button"
+                disabled={isBuilding}
+                onClick={() => void ensureBatch({ forceNew: true })}
+                className="self-start text-xs font-semibold text-brand hover:underline disabled:opacity-50"
+              >
+                {isBuilding ? "Refreshing…" : "Refresh first batch from notes"}
+              </button>
+            )}
           </div>
         )}
 
-        {deck && mode === "flashcards" && (
-          <FlashcardsMode cards={deck.cards} onExit={() => setMode("set")} />
+        {mode === "flashcards" && cards.length > 0 && (
+          <FlashcardsMode
+            cards={cards}
+            onExit={() => setMode("hub")}
+            onNeedMore={() => void loadMoreCards()}
+            canLoadMore={canLoadMore}
+            loadingMore={loadingMore}
+          />
         )}
-        {deck && mode === "learn" && (
-          <LearnMode cards={deck.cards} onExit={() => setMode("set")} />
+        {mode === "learn" && cards.length > 0 && (
+          <LearnMode
+            cards={cards}
+            onExit={() => setMode("hub")}
+            onNeedMore={() => void loadMoreCards()}
+            canLoadMore={canLoadMore}
+            loadingMore={loadingMore}
+          />
         )}
-        {deck && mode === "write" && (
-          <WriteMode cards={deck.cards} onExit={() => setMode("set")} />
+        {mode === "write" && cards.length > 0 && (
+          <WriteMode
+            cards={cards}
+            onExit={() => setMode("hub")}
+            onNeedMore={() => void loadMoreCards()}
+            canLoadMore={canLoadMore}
+            loadingMore={loadingMore}
+          />
         )}
-        {deck && mode === "match" && (
-          <MatchMode cards={deck.cards} onExit={() => setMode("set")} />
+        {mode === "match" && cards.length > 0 && (
+          <MatchMode cards={cards} onExit={() => setMode("hub")} />
         )}
-        {deck && mode === "test" && (
-          <TestMode cards={deck.cards} onExit={() => setMode("set")} />
+        {mode === "test" && cards.length > 0 && (
+          <TestMode
+            cards={cards}
+            onExit={() => setMode("hub")}
+            onNeedMore={() => void loadMoreCards()}
+            canLoadMore={canLoadMore}
+            loadingMore={loadingMore}
+          />
         )}
       </main>
     </div>

@@ -2,8 +2,11 @@
 
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
-import AraAvatar from "@/components/AraAvatar";
+import CharacterStage from "@/components/CharacterStage";
 import { useAuth } from "@/components/AuthProvider";
+
+const inputClass =
+  "rounded-xl border border-border bg-white px-4 py-2.5 text-sm font-normal text-ink outline-none transition-[border-color,box-shadow] focus:border-brand focus:shadow-[0_0_0_3px_rgba(15,107,92,0.12)]";
 
 export default function LoginPage() {
   const { signIn } = useAuth();
@@ -25,30 +28,30 @@ export default function LoginPage() {
     <div className="flex flex-1 justify-center px-4 py-14">
       <main className="flex w-full max-w-md flex-col gap-6">
         <div className="flex flex-col items-center text-center">
-          <AraAvatar size={88} pose="wink" showOutfits={false} priority />
-          <h1 className="mt-3 font-display text-3xl font-bold text-stone-900">
+          <CharacterStage size={88} pose="wink" priority pad="md" />
+          <h1 className="mt-4 font-display text-3xl font-semibold text-ink">
             Welcome back
           </h1>
           <p className="mt-1 text-sm text-muted">
-            Sign in to see only your notes, quizzes, and Ara outfits.
+            Sign in to access your notes, quizzes, and Ara outfits.
           </p>
         </div>
 
         <form
           onSubmit={handleSubmit}
-          className="flex flex-col gap-4 rounded-[1.75rem] border border-border bg-surface p-7"
+          className="flex flex-col gap-4 rounded-2xl border border-border bg-surface p-7"
         >
-          <label className="flex flex-col gap-1.5 text-sm font-semibold text-stone-700">
+          <label className="flex flex-col gap-1.5 text-sm font-semibold text-ink">
             Email
             <input
               type="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="rounded-2xl border border-border px-4 py-2.5 text-sm font-normal outline-none focus:border-brand focus:shadow-[0_0_0_4px_rgba(15,118,110,0.12)]"
+              className={inputClass}
             />
           </label>
-          <label className="flex flex-col gap-1.5 text-sm font-semibold text-stone-700">
+          <label className="flex flex-col gap-1.5 text-sm font-semibold text-ink">
             Password
             <input
               type="password"
@@ -56,16 +59,16 @@ export default function LoginPage() {
               minLength={6}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="rounded-2xl border border-border px-4 py-2.5 text-sm font-normal outline-none focus:border-brand focus:shadow-[0_0_0_4px_rgba(15,118,110,0.12)]"
+              className={inputClass}
             />
           </label>
-          {error && <p className="text-sm text-rose-500">{error}</p>}
+          {error && <p className="text-sm text-accent">{error}</p>}
           <button
             type="submit"
             disabled={isSaving}
-            className="rounded-2xl bg-brand px-5 py-2.5 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-50"
+            className="rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-ink disabled:opacity-50"
           >
-            {isSaving ? "Signing in..." : "Sign in"}
+            {isSaving ? "Signing in…" : "Sign in"}
           </button>
         </form>
 
