@@ -1,0 +1,4 @@
+# Combo outfit portraits are ~700MB+ — too large for Vercel Hobby deploys.
+# Shop still works with single-piece art; full mix-and-match portraits can
+# move to Supabase Storage later.
+public/outfits/combos/**
