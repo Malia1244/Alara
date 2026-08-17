@@ -293,7 +293,6 @@ export default function AraAvatar({
         sizes={`${size}px`}
         className="relative z-[1] bg-transparent object-contain"
         style={{ backgroundColor: "transparent" }}
-        unoptimized
         onError={() => {
           setSrcIndex((i) => (i + 1 < srcCandidates.length ? i + 1 : i));
         }}

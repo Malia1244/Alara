@@ -168,7 +168,6 @@ export default function ShopPage() {
                           fill
                           sizes="80px"
                           className="object-contain object-bottom"
-                          unoptimized
                         />
                       ) : (
                         <span className="flex h-full items-center justify-center text-3xl">

@@ -7,6 +7,10 @@ export function readCachedLookSrc(): string | null {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw || !raw.startsWith("/outfits/")) return null;
+    // Looks were compressed from PNG → WebP; rewrite old cache entries.
+    if (raw.includes("/outfits/looks/") && raw.endsWith(".png")) {
+      return raw.replace(/\.png$/, ".webp");
+    }
     return raw;
   } catch {
     return null;
