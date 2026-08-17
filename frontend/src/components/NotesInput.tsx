@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ClipboardEvent } from "react";
+import { notesFromImage } from "@/lib/api";
 
 type SpeechRecognitionLike = {
   continuous: boolean;
@@ -28,7 +29,11 @@ type Props = {
   placeholder?: string;
   rows?: number;
   required?: boolean;
+  subject?: string;
+  unit?: string;
 };
+
+const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
 
 function getSpeechRecognition(): SpeechRecognitionLike | null {
   if (typeof window === "undefined") return null;
@@ -40,19 +45,44 @@ function getSpeechRecognition(): SpeechRecognitionLike | null {
   return Ctor ? new Ctor() : null;
 }
 
+async function fileToBase64(file: File): Promise<{ base64: string; mime: string }> {
+  if (!file.type.startsWith("image/")) {
+    throw new Error("Please choose a photo (JPEG, PNG, or WebP).");
+  }
+  if (file.size > MAX_IMAGE_BYTES) {
+    throw new Error("That photo is too large — try one under 4 MB.");
+  }
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error("Could not read that photo."));
+    reader.readAsDataURL(file);
+  });
+  const comma = dataUrl.indexOf(",");
+  const header = comma >= 0 ? dataUrl.slice(0, comma) : "";
+  const base64 = comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl;
+  const mimeMatch = /data:([^;]+)/i.exec(header);
+  const mime = mimeMatch?.[1] || file.type || "image/jpeg";
+  return { base64, mime };
+}
+
 export default function NotesInput({
   id = "content",
   value,
   onChange,
-  placeholder = "Paste or type your notes, in your own words...",
+  placeholder = "Paste or type your notes, or paste/upload a photo…",
   rows = 6,
   required = false,
+  subject,
+  unit,
 }: Props) {
   const [isListening, setIsListening] = useState(false);
   const [voiceSupported, setVoiceSupported] = useState(true);
   const [hint, setHint] = useState<string | null>(null);
+  const [readingPhoto, setReadingPhoto] = useState(false);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
   // Keep the latest notes text available inside speech callbacks.
   const valueRef = useRef(value);
   valueRef.current = value;
@@ -72,6 +102,13 @@ export default function NotesInput({
     if (!trimmed) return;
     const current = valueRef.current.trim();
     onChange(current ? `${current} ${trimmed}` : trimmed);
+  }
+
+  function appendBlock(chunk: string) {
+    const trimmed = chunk.trim();
+    if (!trimmed) return;
+    const current = valueRef.current.trim();
+    onChange(current ? `${current}\n\n${trimmed}` : trimmed);
   }
 
   function toggleVoice() {
@@ -128,9 +165,37 @@ export default function NotesInput({
     }
   }
 
+  async function handlePhoto(file: File | undefined) {
+    if (!file || readingPhoto) return;
+    setHint(null);
+    setReadingPhoto(true);
+    try {
+      const { base64, mime } = await fileToBase64(file);
+      const result = await notesFromImage({
+        image_base64: base64,
+        image_mime: mime,
+        subject,
+        unit,
+      });
+      appendBlock(result.content);
+      setHint("Added notes from your photo — edit anything that looks off.");
+    } catch (err) {
+      setHint(
+        err instanceof Error ? err.message : "Couldn’t read that photo."
+      );
+    } finally {
+      setReadingPhoto(false);
+    }
+  }
+
   async function handleFile(file: File | undefined) {
     if (!file) return;
     setHint(null);
+
+    if (file.type.startsWith("image/")) {
+      await handlePhoto(file);
+      return;
+    }
 
     const name = file.name.toLowerCase();
     const isText =
@@ -141,7 +206,7 @@ export default function NotesInput({
       name.endsWith(".csv");
 
     if (!isText) {
-      setHint("Please upload a .txt or .md notes file.");
+      setHint("Upload a photo, or a .txt / .md notes file.");
       return;
     }
 
@@ -152,11 +217,23 @@ export default function NotesInput({
         setHint("That file looked empty.");
         return;
       }
-      const current = valueRef.current.trim();
-      onChange(current ? `${current}\n\n${cleaned}` : cleaned);
+      appendBlock(cleaned);
       setHint(`Added notes from ${file.name}`);
     } catch {
       setHint("Couldn’t read that file.");
+    }
+  }
+
+  async function handlePaste(event: ClipboardEvent<HTMLTextAreaElement>) {
+    const items = event.clipboardData?.items;
+    if (!items) return;
+    for (const item of Array.from(items)) {
+      if (!item.type.startsWith("image/")) continue;
+      const file = item.getAsFile();
+      if (!file) continue;
+      event.preventDefault();
+      await handlePhoto(file);
+      return;
     }
   }
 
@@ -200,6 +277,15 @@ export default function NotesInput({
 
         <button
           type="button"
+          disabled={readingPhoto}
+          onClick={() => photoInputRef.current?.click()}
+          className="inline-flex items-center gap-1.5 rounded-full border border-border bg-white px-3.5 py-1.5 text-xs font-semibold text-stone-600 transition-colors hover:border-brand hover:text-brand disabled:opacity-50"
+        >
+          {readingPhoto ? "Reading photo…" : "Add photo"}
+        </button>
+
+        <button
+          type="button"
           onClick={() => fileInputRef.current?.click()}
           className="inline-flex items-center gap-1.5 rounded-full border border-border bg-white px-3.5 py-1.5 text-xs font-semibold text-stone-600 transition-colors hover:border-brand hover:text-brand"
         >
@@ -215,9 +301,20 @@ export default function NotesInput({
         </button>
 
         <input
+          ref={photoInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          className="hidden"
+          onChange={(e) => {
+            void handlePhoto(e.target.files?.[0]);
+            e.target.value = "";
+          }}
+        />
+
+        <input
           ref={fileInputRef}
           type="file"
-          accept=".txt,.md,.markdown,.csv,text/plain,text/markdown"
+          accept=".txt,.md,.markdown,.csv,text/plain,text/markdown,image/jpeg,image/png,image/webp,image/gif"
           className="hidden"
           onChange={(e) => {
             void handleFile(e.target.files?.[0]);
@@ -230,9 +327,13 @@ export default function NotesInput({
         id={id}
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onPaste={(e) => {
+          void handlePaste(e);
+        }}
         placeholder={placeholder}
         rows={rows}
-        className="resize-none rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm outline-none transition-shadow focus:border-brand focus:shadow-[0_0_0_4px_rgba(15,118,110,0.12)]"
+        disabled={readingPhoto}
+        className="resize-none rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm outline-none transition-shadow focus:border-brand focus:shadow-[0_0_0_4px_rgba(15,118,110,0.12)] disabled:opacity-70"
         required={required}
       />
 
@@ -242,6 +343,10 @@ export default function NotesInput({
           Voice works best in Chrome or Edge.
         </p>
       )}
+      <p className="text-[11px] text-muted">
+        Tip: paste a photo into the box, or tap Add photo. Ara turns it into
+        text notes you can edit and quiz on.
+      </p>
     </div>
   );
 }

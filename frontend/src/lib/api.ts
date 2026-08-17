@@ -306,6 +306,30 @@ export async function explainLearningEntry(
   return res.json();
 }
 
+/** Read a notes/worksheet photo into plain text for the learning log. */
+export async function notesFromImage(input: {
+  image_base64: string;
+  image_mime: string;
+  subject?: string;
+  unit?: string;
+}): Promise<{ content: string }> {
+  const res = await apiFetch("/learning-entries/from-image", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) {
+    let message = `Couldn't read that photo (${res.status})`;
+    try {
+      const body = await res.json();
+      if (typeof body?.detail === "string") message = body.detail;
+    } catch {
+      // keep fallback
+    }
+    throw new Error(message);
+  }
+  return res.json();
+}
+
 export async function fetchQuizForEntry(entryId: string): Promise<Quiz | null> {
   const res = await apiFetch(`/learning-entries/${entryId}/quiz`);
   if (!res.ok) throw new Error(`Failed to load quiz (${res.status})`);

@@ -17,6 +17,7 @@ from supabase import Client, create_client
 from ai import (
     QuizGenerationError,
     explain_learning_notes,
+    extract_notes_from_image,
     generate_flashcards,
     generate_quiz_questions,
     homework_help_reply,
@@ -288,6 +289,18 @@ class ExplainNotesResponse(BaseModel):
     summary: str
     how_to: str
     tip: str = ""
+
+
+class NotesFromImageRequest(BaseModel):
+    """Read handwritten / worksheet photos into plain study notes text."""
+    image_base64: str = Field(..., min_length=1, max_length=6_000_000)
+    image_mime: str = Field(..., min_length=3, max_length=64)
+    subject: Optional[str] = None
+    unit: Optional[str] = None
+
+
+class NotesFromImageResponse(BaseModel):
+    content: str
 
 
 class QuizQuestionPublic(BaseModel):
@@ -1072,6 +1085,27 @@ def explain_draft_notes(body: ExplainNotesRequest, user_id: CurrentUserId):
         how_to=result.get("how_to", ""),
         tip=result.get("tip", "") or "",
     )
+
+
+@app.post("/learning-entries/from-image", response_model=NotesFromImageResponse)
+def notes_from_image(body: NotesFromImageRequest, user_id: CurrentUserId):
+    """Turn a pasted/uploaded notes photo into text for the learning log."""
+    _ = user_id
+    try:
+        text = extract_notes_from_image(
+            image_base64=body.image_base64,
+            image_mime=body.image_mime,
+            subject=body.subject,
+            unit=body.unit,
+        )
+    except QuizGenerationError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    if not (text or "").strip():
+        raise HTTPException(
+            status_code=422,
+            detail="Couldn't read any notes from that photo. Try a clearer picture.",
+        )
+    return NotesFromImageResponse(content=text.strip())
 
 
 @app.post(

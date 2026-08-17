@@ -162,6 +162,8 @@ export default function SubjectPage() {
                 id="content"
                 value={content}
                 onChange={setContent}
+                subject={subject?.name}
+                unit={subject?.unit}
                 required
               />
               <p className="mt-2 text-xs text-muted">

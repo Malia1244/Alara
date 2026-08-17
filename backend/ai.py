@@ -637,6 +637,74 @@ def explain_learning_notes(
     return {"summary": summary, "how_to": how_to, "tip": tip}
 
 
+NOTES_FROM_IMAGE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "content": {"type": "string"},
+    },
+    "required": ["content"],
+}
+
+
+def extract_notes_from_image(
+    image_base64: str,
+    image_mime: str,
+    subject: Optional[str] = None,
+    unit: Optional[str] = None,
+) -> str:
+    """
+    Read a photo of handwritten notes / a worksheet into plain study text
+    that can be saved as a learning-log entry and used for quizzes.
+    """
+    subject_label = (subject or "").strip() or "this subject"
+    unit_label = (unit or "").strip()
+    context = (
+        f"Subject: {subject_label}"
+        + (f"\nUnit: {unit_label}" if unit_label else "")
+    )
+
+    prompt = (
+        "You are helping a student turn a PHOTO of their notes or worksheet "
+        "into clean study notes for a learning log.\n\n"
+        f"{context}\n\n"
+        "Read everything useful from the attached image and return plain text "
+        "notes the student can save and quiz on later.\n\n"
+        "Rules:\n"
+        "- Capture facts, vocabulary, definitions, steps, formulas, examples, "
+        "and key ideas from the photo.\n"
+        "- Keep wording clear and faithful to what's on the page.\n"
+        "- Organize with short lines or bullets when helpful.\n"
+        "- Ignore page decorations, doodles, and unrelated margins.\n"
+        "- Do NOT invent material that is not visible.\n"
+        "- Do NOT write meta lines like \"the student learned…\" or "
+        "\"these notes say…\" — just the study content itself.\n"
+        "- If the photo is blurry or empty, return a short note saying what "
+        "is missing so they can retake it.\n\n"
+        "Return JSON with:\n"
+        "- content: the extracted study notes as plain text"
+    )
+
+    if not GEMINI_API_KEY:
+        return (
+            "(Could not read the photo — Gemini API key is missing on the "
+            "server.)"
+        )
+
+    mime = (image_mime or "image/jpeg").split(";")[0].strip().lower()
+    if mime not in ("image/jpeg", "image/png", "image/webp", "image/gif"):
+        mime = "image/jpeg"
+    raw = image_base64 or ""
+    if "," in raw and raw.strip().lower().startswith("data:"):
+        raw = raw.split(",", 1)[1]
+
+    parts: list[dict] = [
+        {"text": prompt},
+        {"inline_data": {"mime_type": mime, "data": raw}},
+    ]
+    parsed = _gemini_json_parts(parts, NOTES_FROM_IMAGE_SCHEMA)
+    return str(parsed.get("content", "")).strip()
+
+
 def homework_help_reply(
     question: str,
     history: list[dict],

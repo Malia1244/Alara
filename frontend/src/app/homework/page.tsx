@@ -264,8 +264,20 @@ export default function HomeworkHelpPage() {
                 id="homework-input"
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
+                onPaste={(e) => {
+                  const items = e.clipboardData?.items;
+                  if (!items) return;
+                  for (const item of Array.from(items)) {
+                    if (!item.type.startsWith("image/")) continue;
+                    const file = item.getAsFile();
+                    if (!file) continue;
+                    e.preventDefault();
+                    void onPickImage(file);
+                    return;
+                  }
+                }}
                 rows={2}
-                placeholder="Type the question, or add a photo…"
+                placeholder="Type the question, paste a photo, or add a photo…"
                 className="min-h-[2.75rem] flex-1 resize-none rounded-xl border border-border bg-white px-3.5 py-2.5 text-sm text-ink outline-none ring-brand/30 focus:ring-2"
                 disabled={sending}
               />
