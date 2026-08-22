@@ -21,6 +21,7 @@ from ai import (
     generate_flashcards,
     generate_quiz_questions,
     homework_help_reply,
+    is_meta_quiz_question,
     summarize_miss_topics,
     teach_ara_opener,
     teach_ara_reply,
@@ -1230,20 +1231,26 @@ def generate_quiz(
             .execute()
         )
         misses = collect_misses_from_quizzes(recent_quizzes.data or [])
-        focus_misses = [m["question"] for m in misses if m.get("question")]
-        if misses:
+        # Drop diary/meta misses so they are not reused or used as focus.
+        content_misses = [
+            m
+            for m in misses
+            if m.get("question") and not is_meta_quiz_question(m["question"])
+        ]
+        focus_misses = [m["question"] for m in content_misses]
+        if content_misses:
             topics = summarize_miss_topics(
                 [
                     {"question": m["question"], "subject": m["subject"]}
-                    for m in misses
+                    for m in content_misses
                 ]
             )
             focus_topics = [t["topic"] for t in topics if t.get("topic")]
 
-        # Prefer putting missed questions back on the quiz.
+        # Prefer putting missed questions back on the quiz (content only).
         unique_miss_qs = []
         seen = set()
-        for miss in misses:
+        for miss in content_misses:
             text = miss.get("question") or ""
             if not text or text in seen:
                 continue
@@ -1273,7 +1280,9 @@ def generate_quiz(
                 question
                 for row in (old_quizzes_response.data or [])
                 for question in row["questions"]
-                if question.get("question") not in reused_texts
+                if question.get("question")
+                and question.get("question") not in reused_texts
+                and not is_meta_quiz_question(question.get("question", ""))
             ]
             if all_old_questions:
                 review_questions.extend(
@@ -1302,10 +1311,44 @@ def generate_quiz(
             raise HTTPException(status_code=502, detail=str(exc)) from exc
 
     combined_questions = new_questions + review_questions
+    # Last line of defense: never ship diary/meta questions to the client.
+    combined_questions = [
+        q
+        for q in combined_questions
+        if not is_meta_quiz_question(q.get("question", ""))
+    ]
+
+    # If filtering removed too many, generate fresh content questions to fill.
+    shortfall = total_questions - len(combined_questions)
+    if shortfall > 0:
+        try:
+            extras = generate_quiz_questions(
+                entry["subject"],
+                notes,
+                num_questions=shortfall,
+                difficulty=difficulty,
+                focus_misses=focus_misses or None,
+                focus_topics=focus_topics or None,
+            )
+            for q in extras:
+                if is_meta_quiz_question(q.get("question", "")):
+                    continue
+                combined_questions.append(q)
+                if len(combined_questions) >= total_questions:
+                    break
+        except QuizGenerationError:
+            pass
+
     # Keep the quiz at the requested size even if Gemini returns extras.
     if len(combined_questions) > total_questions:
         combined_questions = combined_questions[:total_questions]
     random.shuffle(combined_questions)
+
+    if not combined_questions:
+        raise HTTPException(
+            status_code=502,
+            detail="Couldn't build content quiz questions. Try again.",
+        )
 
     insert_response = (
         supabase.table("quizzes")

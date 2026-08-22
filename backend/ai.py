@@ -7,6 +7,7 @@ find and change without touching the API routes.
 
 import json
 import os
+import re
 from typing import Optional, TypedDict
 
 import httpx
@@ -92,6 +93,40 @@ FLASHCARDS_SCHEMA = {
     },
     "required": ["cards"],
 }
+
+# Detect diary / session questions so we never reuse them as review items
+# and can drop them if the model still emits one.
+_META_QUIZ_PATTERNS = [
+    re.compile(p, re.IGNORECASE)
+    for p in (
+        r"\bwhat did (you|we|i) (learn|study|cover|review|practice|do|work on)\b",
+        r"\bwhat (have|had) (you|we|i) (learn|learned|study|studied|cover|covered)\b",
+        r"\bwhat (subject|topic|material|lesson|unit) did (you|we|i)\b",
+        r"\bwhat (was|were) (in )?(your|our|the) notes\b",
+        r"\bwhat (did )?(you|we|i) (cover|study|learn).*\b(today|this (day|exact day|session|lesson))\b",
+        r"\b(on )?this exact day\b",
+        r"\b(today|this day|this session)\b.*\b(learn|learned|study|studied|cover|covered)\b",
+        r"\b(learn|learned|study|studied|cover|covered)\b.*\b(today|this day|this exact day|this session)\b",
+        r"\bdid (you|we|i) learn\b",
+        r"\bwhat activity did (you|we|i)\b",
+        r"\bwhat (have|had) (you|we|i) been (learning|studying)\b",
+        r"\bwhich (topic|subject) did (you|we|i) (study|cover|learn)\b",
+        r"\bwe (studied|learned|covered|reviewed)\b.*\b(true or false|t/?f)\b",
+        r"\b(true or false|t/?f)\b.*\bwe (studied|learned|covered|reviewed)\b",
+        r"\baccording to (your|the) notes,? what did\b",
+        r"\bwhat was (today'?s|this) (lesson|topic|focus|subject)\b",
+        r"\bmain thing (you|we|i) (learned|studied|covered)\b",
+        r"\bfocus of (today|this (day|lesson|session))\b",
+    )
+]
+
+
+def is_meta_quiz_question(question: str) -> bool:
+    """True if the question is about the study session, not the material."""
+    text = (question or "").strip()
+    if not text:
+        return False
+    return any(pattern.search(text) for pattern in _META_QUIZ_PATTERNS)
 
 TEACH_OPENER_SCHEMA = {
     "type": "object",
@@ -203,12 +238,19 @@ def generate_quiz_questions(
     focus_misses: Optional[list[str]] = None,
     focus_topics: Optional[list[str]] = None,
 ) -> list[QuizQuestion]:
+    # Never feed meta / diary misses back into the model as "practice targets".
+    content_misses = [
+        q for q in (focus_misses or []) if q and not is_meta_quiz_question(q)
+    ]
+
     focus_block = ""
-    if focus_misses or focus_topics:
+    if content_misses or focus_topics:
         focus_block = (
             "\n\nIMPORTANT — this student has been missing some material. "
             "Make most of these new questions practice that weak material "
-            "(rephrase ideas; do not copy questions word-for-word).\n"
+            "(rephrase ideas; do not copy questions word-for-word). "
+            "Practice the CONTENT of those misses — never ask what they "
+            "studied or learned that day.\n"
         )
         if focus_topics:
             focus_block += (
@@ -216,10 +258,10 @@ def generate_quiz_questions(
                 + "\n- ".join(focus_topics[:8])
                 + "\n"
             )
-        if focus_misses:
+        if content_misses:
             focus_block += (
-                "Recently missed questions (make related practice):\n- "
-                + "\n- ".join(focus_misses[:8])
+                "Recently missed questions (make related content practice):\n- "
+                + "\n- ".join(content_misses[:8])
                 + "\n"
             )
 
@@ -235,21 +277,33 @@ def generate_quiz_questions(
         f"Write {num_questions} multiple choice questions that test the "
         f"ACTUAL information, skills, facts, vocabulary, and concepts in "
         f"those notes — as if this were a real class quiz on the material.\n\n"
-        f"CRITICAL — do NOT ask meta / diary questions about the learning "
-        f"session. The student already knows what they studied. Ban questions "
-        f"like:\n"
-        f"- What did we / you learn today?\n"
+        f"Every question MUST check a concrete fact or skill from the notes "
+        f"(letter order, sounds, definitions, steps, formulas, examples, "
+        f"cause/effect, vocabulary meaning, etc.).\n\n"
+        f"CRITICAL — FORBIDDEN meta / diary questions about the learning "
+        f"session. The student already knows what they studied. Never ask "
+        f"what they learned, covered, studied, practiced, or did today / "
+        f"this day / this session. Ban questions like:\n"
+        f"- What did we / you learn today / on this exact day?\n"
         f"- What subject / topic did we cover?\n"
         f"- Did we learn the alphabet / X?\n"
         f"- What was in your notes?\n"
-        f"- What activity did you do?\n\n"
+        f"- What activity did you do?\n"
+        f"- What was today's lesson / focus?\n\n"
         f"GOOD examples (content): \"Which letter comes after M?\" "
-        f"\"What sound does B make?\" \"Which word starts with A?\"\n"
-        f"BAD examples (meta): \"What did you learn today?\" "
-        f"\"We studied the alphabet — true or false?\"\n\n"
+        f"\"What sound does B make?\" \"Which word starts with A?\" "
+        f"\"What does photosynthesis produce?\"\n"
+        f"BAD examples (meta — never write these): "
+        f"\"What did you learn today?\" "
+        f"\"What did you learn on this exact day?\" "
+        f"\"We studied the alphabet — true or false?\" "
+        f"\"What topic was in your notes?\"\n\n"
         f"If the notes only say something vague like \"we learned the "
         f"alphabet\", still quiz the alphabet itself (letter order, "
-        f"sounds, examples) — not the fact that they studied it.\n\n"
+        f"sounds, examples) — not the fact that they studied it. "
+        f"Answers like \"the alphabet\" or \"math\" or \"today's notes\" "
+        f"usually mean the question is meta — rewrite it as a content "
+        f"question instead.\n\n"
         f"Each question needs exactly 4 answer options, with only one "
         f"correct answer. Keep wording clear and age-appropriate for a "
         f"middle/high school student. Vary which option index (0-3) is "
@@ -257,7 +311,31 @@ def generate_quiz_questions(
     )
 
     parsed = _gemini_json(prompt, RESPONSE_SCHEMA)
-    return parsed["questions"]
+    questions = [
+        q
+        for q in parsed["questions"]
+        if not is_meta_quiz_question(q.get("question", ""))
+    ]
+
+    # One refill if the model still slipped meta questions through.
+    shortfall = num_questions - len(questions)
+    if shortfall > 0 and shortfall < num_questions:
+        refill = _gemini_json(
+            prompt.replace(
+                f"Write {num_questions} multiple choice questions",
+                f"Write {shortfall} multiple choice questions",
+                1,
+            ),
+            RESPONSE_SCHEMA,
+        )
+        for q in refill["questions"]:
+            if is_meta_quiz_question(q.get("question", "")):
+                continue
+            questions.append(q)
+            if len(questions) >= num_questions:
+                break
+
+    return questions[:num_questions]
 
 
 def summarize_miss_topics(
