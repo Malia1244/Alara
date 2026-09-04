@@ -5,6 +5,8 @@ AUTH SETUP (once)
    supabase/migrations/002_fix_user_stats.sql
    supabase/migrations/003_fix_shop_purchases_pkey.sql
    supabase/migrations/004_ara_memories.sql
+   supabase/migrations/005_enable_rls.sql
+   (005 turns on Row Level Security — required to fix “table publicly accessible”)
 2. In Supabase → Authentication, enable Email provider.
    (Optional) turn OFF "Confirm email" while testing locally.
 3. Add to frontend/.env.local:
