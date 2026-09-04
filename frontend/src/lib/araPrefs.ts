@@ -1,3 +1,5 @@
+export type UiTheme = "original" | "sleek" | "playful";
+
 export type AraPrefs = {
   /** Idle bob + pose-change bounce */
   motion: boolean;
@@ -7,6 +9,8 @@ export type AraPrefs = {
   studyReminders: boolean;
   /** Local hour (0–23) to nudge if nothing logged yet */
   reminderHour: number;
+  /** App color / vibe theme */
+  theme: UiTheme;
 };
 
 export const DEFAULT_ARA_PREFS: AraPrefs = {
@@ -14,6 +18,7 @@ export const DEFAULT_ARA_PREFS: AraPrefs = {
   tips: true,
   studyReminders: false,
   reminderHour: 17,
+  theme: "original",
 };
 
 const STORAGE_KEY = "alara-ara-prefs";
@@ -23,6 +28,13 @@ function clampHour(value: unknown): number {
   const n = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(n)) return DEFAULT_ARA_PREFS.reminderHour;
   return Math.min(23, Math.max(0, Math.round(n)));
+}
+
+function normalizeTheme(value: unknown): UiTheme {
+  if (value === "sleek" || value === "playful" || value === "original") {
+    return value;
+  }
+  return "original";
 }
 
 export function readAraPrefs(): AraPrefs {
@@ -36,6 +48,7 @@ export function readAraPrefs(): AraPrefs {
       tips: parsed.tips !== false,
       studyReminders: parsed.studyReminders === true,
       reminderHour: clampHour(parsed.reminderHour),
+      theme: normalizeTheme(parsed.theme),
     };
   } catch {
     return DEFAULT_ARA_PREFS;
@@ -45,4 +58,14 @@ export function readAraPrefs(): AraPrefs {
 export function writeAraPrefs(next: AraPrefs) {
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   window.dispatchEvent(new CustomEvent(ARA_PREFS_EVENT, { detail: next }));
+}
+
+export function applyUiTheme(theme: UiTheme) {
+  if (typeof document === "undefined") return;
+  const root = document.documentElement;
+  if (theme === "original") {
+    delete root.dataset.uiTheme;
+  } else {
+    root.dataset.uiTheme = theme;
+  }
 }

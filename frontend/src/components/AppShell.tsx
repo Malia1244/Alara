@@ -8,6 +8,7 @@ import AuthGate from "@/components/AuthGate";
 import { AraPrefsProvider } from "@/components/AraPrefsProvider";
 import ApiWakeBanner from "@/components/ApiWakeBanner";
 import StudyReminderBanner from "@/components/StudyReminderBanner";
+import AchievementSplash from "@/components/AchievementSplash";
 import StudyMusicBridge from "@/components/StudyMusicBridge";
 import StudySessionBar from "@/components/StudySessionBar";
 import {
@@ -48,6 +49,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <AraPrefsProvider>
         <ApiWakeBanner />
         {!isPublic && <StudyReminderBanner />}
+        {!isPublic && <AchievementSplash />}
         <div
           className={
             isPublic

@@ -10,9 +10,11 @@ import {
 import {
   ARA_PREFS_EVENT,
   DEFAULT_ARA_PREFS,
+  applyUiTheme,
   readAraPrefs,
   writeAraPrefs,
   type AraPrefs,
+  type UiTheme,
 } from "@/lib/araPrefs";
 
 type AraPrefsContextValue = {
@@ -21,6 +23,7 @@ type AraPrefsContextValue = {
   setTips: (on: boolean) => void;
   setStudyReminders: (on: boolean) => void;
   setReminderHour: (hour: number) => void;
+  setTheme: (theme: UiTheme) => void;
 };
 
 const AraPrefsContext = createContext<AraPrefsContextValue>({
@@ -29,17 +32,21 @@ const AraPrefsContext = createContext<AraPrefsContextValue>({
   setTips: () => {},
   setStudyReminders: () => {},
   setReminderHour: () => {},
+  setTheme: () => {},
 });
 
 export function AraPrefsProvider({ children }: { children: ReactNode }) {
   const [prefs, setPrefs] = useState<AraPrefs>(DEFAULT_ARA_PREFS);
 
   useEffect(() => {
-    setPrefs(readAraPrefs());
+    const initial = readAraPrefs();
+    setPrefs(initial);
+    applyUiTheme(initial.theme);
     function onChange(event: Event) {
       const detail = (event as CustomEvent<AraPrefs>).detail;
-      if (detail) setPrefs(detail);
-      else setPrefs(readAraPrefs());
+      const next = detail ?? readAraPrefs();
+      setPrefs(next);
+      applyUiTheme(next.theme);
     }
     window.addEventListener(ARA_PREFS_EVENT, onChange);
     return () => window.removeEventListener(ARA_PREFS_EVENT, onChange);
@@ -49,6 +56,7 @@ export function AraPrefsProvider({ children }: { children: ReactNode }) {
     const next = { ...prefs, ...partial };
     setPrefs(next);
     writeAraPrefs(next);
+    if (partial.theme) applyUiTheme(partial.theme);
   }
 
   return (
@@ -59,6 +67,7 @@ export function AraPrefsProvider({ children }: { children: ReactNode }) {
         setTips: (on) => update({ tips: on }),
         setStudyReminders: (on) => update({ studyReminders: on }),
         setReminderHour: (hour) => update({ reminderHour: hour }),
+        setTheme: (theme) => update({ theme }),
       }}
     >
       {children}

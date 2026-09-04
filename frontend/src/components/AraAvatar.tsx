@@ -63,8 +63,8 @@ type Props = {
   // Expression / body pose. Baked outfit art is wave-only — when clothes are
   // equipped, that portrait is used so outfits show on every page.
   pose?: AraPose;
-  /** Soft idle bob / one-shot react bounce */
-  motion?: "idle" | "react" | "none";
+  /** Soft idle bob / one-shot react bounce / celebration dance */
+  motion?: "idle" | "react" | "dance" | "none";
   // Live shop state from a parent (Shop page) so equip updates Ara instantly.
   shop?: ShopState | null;
 };
@@ -237,7 +237,9 @@ export default function AraAvatar({
       ? "ara-idle"
       : motionEnabled && motion === "react"
         ? "ara-react"
-        : "";
+        : motionEnabled && motion === "dance"
+          ? "ara-dance"
+          : "";
 
   const safeIndex = Math.min(srcIndex, srcCandidates.length - 1);
   const baseSrc = srcCandidates[safeIndex] ?? ARA_POSE_SRC[pose];

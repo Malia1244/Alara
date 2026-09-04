@@ -1,4 +1,5 @@
 import { isImmersiveVibe, type StudyVibeId } from "@/lib/studyVibes";
+import { addFocusMinutes } from "@/lib/focusStats";
 
 export type StudyGoal = {
   id: string;
@@ -67,8 +68,27 @@ export function writeStudySession(session: StudySession | null) {
     emitStudySessionChange();
     return;
   }
+  if (session.status === "ended") {
+    creditFocusMinutesOnce(session);
+  }
   window.localStorage.setItem(STUDY_SESSION_KEY, JSON.stringify(session));
   emitStudySessionChange();
+}
+
+const FOCUS_CREDIT_KEY = "alara-focus-credited-session";
+
+function creditFocusMinutesOnce(session: StudySession) {
+  try {
+    const id = String(session.startedAt);
+    if (window.localStorage.getItem(FOCUS_CREDIT_KEY) === id) return;
+    const end = Math.min(Date.now(), session.endsAt || Date.now());
+    const elapsedMs = Math.max(0, end - session.startedAt);
+    const minutes = Math.max(1, Math.round(elapsedMs / 60000));
+    addFocusMinutes(minutes);
+    window.localStorage.setItem(FOCUS_CREDIT_KEY, id);
+  } catch {
+    // ignore
+  }
 }
 
 /**

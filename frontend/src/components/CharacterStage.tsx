@@ -7,7 +7,7 @@ import type { AraPose } from "@/lib/araPoses";
 type Props = {
   size?: number;
   pose?: AraPose;
-  motion?: "idle" | "react" | "none";
+  motion?: "idle" | "react" | "dance" | "none";
   priority?: boolean;
   label?: string;
   className?: string;

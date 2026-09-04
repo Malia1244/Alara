@@ -1,6 +1,7 @@
 "use client";
 
 import { useAraPrefs } from "@/components/AraPrefsProvider";
+import type { UiTheme } from "@/lib/araPrefs";
 
 type Props = {
   className?: string;
@@ -49,6 +50,12 @@ function ToggleRow({
   );
 }
 
+const THEMES: { id: UiTheme; label: string }[] = [
+  { id: "original", label: "Original" },
+  { id: "sleek", label: "Sleek" },
+  { id: "playful", label: "Playful" },
+];
+
 export default function AraPrefsControls({
   className = "",
   compact = false,
@@ -59,6 +66,7 @@ export default function AraPrefsControls({
     setTips,
     setStudyReminders,
     setReminderHour,
+    setTheme,
   } = useAraPrefs();
 
   async function handleRemindersToggle(on: boolean) {
@@ -131,6 +139,29 @@ export default function AraPrefsControls({
             </select>
           </label>
         )}
+
+        <div className="flex flex-col gap-1.5 pt-1">
+          <p className="text-xs font-medium text-stone-600">Theme</p>
+          <div className="grid grid-cols-3 gap-1.5">
+            {THEMES.map((t) => {
+              const active = prefs.theme === t.id;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setTheme(t.id)}
+                  className={`rounded-lg px-2 py-2 text-[11px] font-semibold transition ${
+                    active
+                      ? "bg-brand text-white"
+                      : "border border-border bg-white text-stone-600 hover:border-brand/40"
+                  }`}
+                >
+                  {t.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -407,6 +407,149 @@ html[data-study-scene="focus"] .app-backdrop::after {
   will-change: transform;
 }
 
+/* Celebration dance — whole portrait moves so outfit stays on */
+@keyframes ara-dance {
+  0% {
+    transform: translateY(0) rotate(0deg) scale(1);
+  }
+  12% {
+    transform: translateY(-14px) rotate(-6deg) scale(1.04);
+  }
+  25% {
+    transform: translateY(-2px) rotate(5deg) scale(1.02);
+  }
+  38% {
+    transform: translateY(-16px) rotate(-4deg) scale(1.06);
+  }
+  50% {
+    transform: translateY(0) rotate(3deg) scale(1);
+  }
+  62% {
+    transform: translateY(-12px) rotate(-5deg) scale(1.05);
+  }
+  75% {
+    transform: translateY(-1px) rotate(4deg) scale(1.02);
+  }
+  88% {
+    transform: translateY(-10px) rotate(-3deg) scale(1.04);
+  }
+  100% {
+    transform: translateY(0) rotate(0deg) scale(1);
+  }
+}
+
+.ara-dance {
+  animation: ara-dance 0.85s ease-in-out infinite;
+  transform-origin: 50% 85%;
+  will-change: transform;
+}
+
+.achievement-card {
+  animation: ara-bubble-in 0.4s ease-out both;
+}
+
+.achievement-stage {
+  filter: drop-shadow(0 18px 28px rgba(16, 32, 28, 0.18));
+}
+
+.achievement-confetti {
+  pointer-events: none;
+  position: absolute;
+  inset: -20% -10% auto;
+  height: 55%;
+  background:
+    radial-gradient(circle at 18% 40%, rgba(13, 138, 114, 0.35) 0 4px, transparent 5px),
+    radial-gradient(circle at 72% 28%, rgba(224, 79, 58, 0.35) 0 5px, transparent 6px),
+    radial-gradient(circle at 46% 18%, rgba(31, 111, 178, 0.3) 0 4px, transparent 5px),
+    radial-gradient(circle at 88% 52%, rgba(217, 119, 6, 0.35) 0 3px, transparent 4px),
+    radial-gradient(circle at 30% 62%, rgba(13, 138, 114, 0.25) 0 3px, transparent 4px);
+  animation: achievement-sparkle 1.8s ease-in-out infinite;
+}
+
+@keyframes achievement-sparkle {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(6px);
+  }
+}
+
+/* —— App UI themes (Original / Sleek / Playful) —— */
+html[data-ui-theme="sleek"] {
+  --background: #f4f5f7;
+  --foreground: #111827;
+  --surface: #ffffff;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+  --brand: #111827;
+  --brand-soft: #e5e7eb;
+  --brand-ink: #030712;
+  --accent: #4f46e5;
+  --accent-soft: #eef2ff;
+  --sky: #2563eb;
+  --amber: #d97706;
+  --ink: #111827;
+  --panel: #f9fafb;
+}
+
+html[data-ui-theme="sleek"] body.app-backdrop {
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 55%, #eef2ff 100%);
+}
+
+html[data-ui-theme="sleek"] body.app-backdrop::before {
+  opacity: 0.18;
+  background-image:
+    linear-gradient(rgba(17, 24, 39, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(17, 24, 39, 0.05) 1px, transparent 1px);
+}
+
+html[data-ui-theme="sleek"] body.app-backdrop::after {
+  background:
+    radial-gradient(640px 280px at 8% -10%, rgba(79, 70, 229, 0.12), transparent 60%),
+    radial-gradient(520px 260px at 94% 0%, rgba(17, 24, 39, 0.08), transparent 55%);
+}
+
+html[data-ui-theme="playful"] {
+  --background: #fff7ed;
+  --foreground: #3b1d0f;
+  --surface: #ffffff;
+  --muted: #9a6b4a;
+  --border: #fdba74;
+  --brand: #ea580c;
+  --brand-soft: #ffedd5;
+  --brand-ink: #9a3412;
+  --accent: #db2777;
+  --accent-soft: #fce7f3;
+  --sky: #0284c7;
+  --amber: #f59e0b;
+  --ink: #3b1d0f;
+  --panel: #fffbeb;
+}
+
+html[data-ui-theme="playful"] body.app-backdrop {
+  background: linear-gradient(165deg, #fff7ed 0%, #fce7f3 48%, #e0f2fe 100%);
+}
+
+html[data-ui-theme="playful"] body.app-backdrop::before {
+  opacity: 0.28;
+  background-image:
+    radial-gradient(circle at 20% 20%, rgba(234, 88, 12, 0.14) 0 18px, transparent 19px),
+    radial-gradient(circle at 70% 30%, rgba(219, 39, 119, 0.12) 0 14px, transparent 15px),
+    radial-gradient(circle at 40% 75%, rgba(2, 132, 199, 0.12) 0 16px, transparent 17px);
+  background-size: 120px 120px, 160px 160px, 140px 140px;
+  mask-image: none;
+}
+
+html[data-ui-theme="playful"] body.app-backdrop::after {
+  background:
+    radial-gradient(560px 300px at 10% -5%, rgba(234, 88, 12, 0.22), transparent 58%),
+    radial-gradient(480px 260px at 95% 5%, rgba(219, 39, 119, 0.18), transparent 55%);
+}
+
 .ara-speech-bubble {
   animation: ara-bubble-in 0.35s ease-out both;
 }
@@ -434,9 +577,11 @@ html[data-study-scene="focus"] .app-backdrop::after {
 @media (prefers-reduced-motion: reduce) {
   .ara-idle,
   .ara-react,
+  .ara-dance,
   .ara-speech-bubble,
   .animate-rise,
-  .animate-rise-delay {
+  .animate-rise-delay,
+  .achievement-confetti {
     animation: none;
   }
 }
