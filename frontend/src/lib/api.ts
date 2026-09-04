@@ -16,6 +16,8 @@ export type LearningEntry = {
   unit: string | null;
   content: string;
   created_at: string;
+  points_earned?: number;
+  total_points?: number | null;
 };
 
 export type QuizQuestion = {

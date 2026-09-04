@@ -13,6 +13,7 @@ import {
 import QuizPanel, { type QuizStatus } from "@/components/QuizPanel";
 import NotesExplainCard from "@/components/NotesExplainCard";
 import NotesInput from "@/components/NotesInput";
+import NoticeBanner from "@/components/NoticeBanner";
 import TestCheckInModal from "@/components/TestCheckInModal";
 
 function formatDate(iso: string) {
@@ -48,6 +49,7 @@ export default function SubjectPage() {
   const [todaysQuizStatus, setTodaysQuizStatus] = useState<QuizStatus | null>(
     null
   );
+  const [prizeMessage, setPrizeMessage] = useState<string | null>(null);
 
   async function loadData() {
     try {
@@ -87,8 +89,16 @@ export default function SubjectPage() {
     setIsSaving(true);
     setError(null);
     try {
-      await createLearningEntry({ subject_id: subjectId, content });
+      const saved = await createLearningEntry({
+        subject_id: subjectId,
+        content,
+      });
       setContent("");
+      if (saved.points_earned && saved.points_earned > 0) {
+        setPrizeMessage(
+          `Nice! +${saved.points_earned} shop points for logging what you learned.`
+        );
+      }
       await loadData();
     } catch {
       setError("Couldn't save your entry. Please try again.");
@@ -99,6 +109,10 @@ export default function SubjectPage() {
 
   return (
     <div className="flex flex-1 justify-center px-4 py-10 sm:py-16">
+      <NoticeBanner
+        message={prizeMessage}
+        onClose={() => setPrizeMessage(null)}
+      />
       {needsTestCheckIn && subject && (
         <TestCheckInModal
           subject={subject}
@@ -168,7 +182,9 @@ export default function SubjectPage() {
               />
               <p className="mt-2 text-xs text-muted">
                 Notes feeling fuzzy? Ask Ara for a short plain-English summary
-                before you save.
+                before you save. First log today earns{" "}
+                <span className="font-semibold text-brand-ink">+25 shop points</span>
+                .
               </p>
             </div>
 

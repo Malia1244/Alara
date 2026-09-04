@@ -66,6 +66,8 @@ MISS_LOOKBACK_QUIZZES = 12
 # the shop. There's only one "profile" for now (no accounts yet), so we
 # keep a single row in user_stats to track the running total.
 POINTS_PER_CORRECT_ANSWER = 10
+# Prize for logging what you learned (once per subject per calendar day).
+POINTS_PER_LEARNING_ENTRY = 25
 
 # The shop's catalog lives on the backend (not the frontend) so prices
 # can't be tampered with from the browser — the client only ever sends an
@@ -277,6 +279,9 @@ class LearningEntry(BaseModel):
     unit: Optional[str] = None
     content: str
     created_at: str
+    # Filled on create when this log earns the daily study prize.
+    points_earned: int = 0
+    total_points: Optional[int] = None
 
 
 class ExplainNotesRequest(BaseModel):
@@ -1051,6 +1056,21 @@ def create_learning_entry(entry: LearningEntryCreate, user_id: CurrentUserId):
     if not subject:
         raise HTTPException(status_code=404, detail="Subject not found")
 
+    # First log for this subject today earns shop points (the study prize).
+    today = date.today()
+    prior_today = (
+        supabase.table("daily_learning_entries")
+        .select("id, created_at")
+        .eq("user_id", user_id)
+        .eq("subject_id", subject["id"])
+        .execute()
+    )
+    already_logged_today = any(
+        date.fromisoformat(str(row["created_at"])[:10]) == today
+        for row in (prior_today.data or [])
+        if row.get("created_at")
+    )
+
     response = (
         supabase.table("daily_learning_entries")
         .insert(
@@ -1069,7 +1089,28 @@ def create_learning_entry(entry: LearningEntryCreate, user_id: CurrentUserId):
     )
     if not response.data:
         raise HTTPException(status_code=500, detail="Failed to save entry")
-    return response.data[0]
+
+    row = dict(response.data[0])
+    points_earned = 0
+    total_points = None
+    if not already_logged_today:
+        stats = get_or_create_stats_row(supabase, user_id)
+        points_earned = POINTS_PER_LEARNING_ENTRY
+        total_points = int(stats.get("points") or 0) + points_earned
+        supabase.table("user_stats").update({"points": total_points}).eq(
+            "user_id", user_id
+        ).execute()
+
+    return LearningEntry(
+        id=row["id"],
+        subject_id=row.get("subject_id"),
+        subject=row["subject"],
+        unit=row.get("unit"),
+        content=row["content"],
+        created_at=row["created_at"],
+        points_earned=points_earned,
+        total_points=total_points,
+    )
 
 
 @app.post("/learning-entries/explain", response_model=ExplainNotesResponse)

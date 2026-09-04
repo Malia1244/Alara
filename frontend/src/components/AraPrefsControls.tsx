@@ -12,35 +12,40 @@ function ToggleRow({
   label,
   checked,
   onChange,
+  hint,
 }: {
   id: string;
   label: string;
   checked: boolean;
   onChange: (on: boolean) => void;
+  hint?: string;
 }) {
   return (
-    <label
-      htmlFor={id}
-      className="flex cursor-pointer items-center justify-between gap-3"
-    >
-      <span className="text-xs font-medium text-stone-600">{label}</span>
-      <button
-        id={id}
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        onClick={() => onChange(!checked)}
-        className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
-          checked ? "bg-brand" : "bg-stone-200"
-        }`}
+    <div className="flex flex-col gap-1">
+      <label
+        htmlFor={id}
+        className="flex cursor-pointer items-center justify-between gap-3"
       >
-        <span
-          className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${
-            checked ? "translate-x-5" : "translate-x-0"
+        <span className="text-xs font-medium text-stone-600">{label}</span>
+        <button
+          id={id}
+          type="button"
+          role="switch"
+          aria-checked={checked}
+          onClick={() => onChange(!checked)}
+          className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
+            checked ? "bg-brand" : "bg-stone-200"
           }`}
-        />
-      </button>
-    </label>
+        >
+          <span
+            className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${
+              checked ? "translate-x-5" : "translate-x-0"
+            }`}
+          />
+        </button>
+      </label>
+      {hint && <p className="text-[10px] leading-snug text-muted">{hint}</p>}
+    </div>
   );
 }
 
@@ -48,7 +53,26 @@ export default function AraPrefsControls({
   className = "",
   compact = false,
 }: Props) {
-  const { prefs, setMotion, setTips } = useAraPrefs();
+  const {
+    prefs,
+    setMotion,
+    setTips,
+    setStudyReminders,
+    setReminderHour,
+  } = useAraPrefs();
+
+  async function handleRemindersToggle(on: boolean) {
+    if (on && typeof window !== "undefined" && "Notification" in window) {
+      if (Notification.permission === "default") {
+        try {
+          await Notification.requestPermission();
+        } catch {
+          // Still enable in-app reminders even if permission fails.
+        }
+      }
+    }
+    setStudyReminders(on);
+  }
 
   return (
     <div
@@ -74,6 +98,39 @@ export default function AraPrefsControls({
           checked={prefs.tips}
           onChange={setTips}
         />
+        <ToggleRow
+          id="ara-study-reminders-toggle"
+          label="Study reminders"
+          checked={prefs.studyReminders}
+          onChange={(on) => {
+            void handleRemindersToggle(on);
+          }}
+          hint="Ara nudges you to log what you learned — earn shop points when you do."
+        />
+        {prefs.studyReminders && (
+          <label className="flex items-center justify-between gap-3">
+            <span className="text-xs font-medium text-stone-600">
+              Reminder time
+            </span>
+            <select
+              value={prefs.reminderHour}
+              onChange={(e) => setReminderHour(Number(e.target.value))}
+              className="rounded-lg border border-border bg-white px-2 py-1 text-xs font-semibold text-ink"
+            >
+              {Array.from({ length: 24 }, (_, hour) => {
+                const label = new Date(2000, 0, 1, hour).toLocaleTimeString(
+                  undefined,
+                  { hour: "numeric" }
+                );
+                return (
+                  <option key={hour} value={hour}>
+                    {label}
+                  </option>
+                );
+              })}
+            </select>
+          </label>
+        )}
       </div>
     </div>
   );

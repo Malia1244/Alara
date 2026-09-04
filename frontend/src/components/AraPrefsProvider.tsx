@@ -19,12 +19,16 @@ type AraPrefsContextValue = {
   prefs: AraPrefs;
   setMotion: (on: boolean) => void;
   setTips: (on: boolean) => void;
+  setStudyReminders: (on: boolean) => void;
+  setReminderHour: (hour: number) => void;
 };
 
 const AraPrefsContext = createContext<AraPrefsContextValue>({
   prefs: DEFAULT_ARA_PREFS,
   setMotion: () => {},
   setTips: () => {},
+  setStudyReminders: () => {},
+  setReminderHour: () => {},
 });
 
 export function AraPrefsProvider({ children }: { children: ReactNode }) {
@@ -53,6 +57,8 @@ export function AraPrefsProvider({ children }: { children: ReactNode }) {
         prefs,
         setMotion: (on) => update({ motion: on }),
         setTips: (on) => update({ tips: on }),
+        setStudyReminders: (on) => update({ studyReminders: on }),
+        setReminderHour: (hour) => update({ reminderHour: hour }),
       }}
     >
       {children}
