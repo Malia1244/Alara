@@ -86,7 +86,8 @@ export default function ShopPage() {
     }
   }
 
-  const outfits = shop?.items ?? [];
+  const outfits = (shop?.items ?? []).filter((item) => item.slot === "outfit");
+  const themes = (shop?.items ?? []).filter((item) => item.slot === "theme");
 
   return (
     <div className="flex flex-1 justify-center px-4 py-10 sm:px-8 sm:py-14">
@@ -101,7 +102,7 @@ export default function ShopPage() {
               Shop
             </h1>
             <p className="mt-1 text-sm leading-relaxed text-muted">
-              Complete named looks for Ara — hair, top, bottoms, and shoes.
+              Buy looks for Ara and unlock app themes with points.
             </p>
           </div>
 
@@ -120,7 +121,8 @@ export default function ShopPage() {
         </div>
 
         <p className="rounded-xl border border-border bg-brand-soft/50 px-4 py-3 text-xs font-medium text-brand-ink">
-          Each card is one full outfit. Lavender Soft Day is free.
+          Outfits dress Ara. Themes change the whole app look — unlock with
+          points, then switch in Ara options.
         </p>
 
         {error && <p className="text-center text-sm text-rose-600">{error}</p>}
@@ -130,6 +132,64 @@ export default function ShopPage() {
             <div className="h-10 w-10 animate-pulse rounded-full bg-brand-soft" />
             <p className="text-sm text-muted">Getting Ara ready…</p>
           </div>
+        )}
+
+        {shop && themes.length > 0 && (
+          <section className="flex flex-col gap-3">
+            <h2 className="text-xs font-bold uppercase tracking-[0.14em] text-muted">
+              App themes
+            </h2>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {themes.map((item: ShopItem) => {
+                const isOwned = shop.owned_item_ids.includes(item.id);
+                const canAfford = shop.points >= item.price;
+                const isBusy = busyId === item.id;
+                return (
+                  <div
+                    key={item.id}
+                    className={`interactive-tile flex gap-4 rounded-2xl border p-4 text-left ${
+                      isOwned
+                        ? "border-brand bg-brand-soft/70"
+                        : "border-border bg-surface"
+                    }`}
+                  >
+                    <div className="flex h-24 w-20 shrink-0 items-center justify-center rounded-xl bg-panel text-3xl">
+                      {item.emoji}
+                    </div>
+                    <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                      <p className="font-display text-base font-semibold text-ink">
+                        {item.name}
+                      </p>
+                      {item.pieces && (
+                        <p className="text-[11px] leading-snug text-muted">
+                          {item.pieces}
+                        </p>
+                      )}
+                      <p className="text-xs text-muted">
+                        {item.price === 0 ? "Free" : `${item.price} pts`}
+                      </p>
+                      <div className="mt-auto pt-1">
+                        {isOwned ? (
+                          <span className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-muted">
+                            Unlocked · use in Ara options
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled={isBusy || !canAfford}
+                            onClick={() => handleBuy(item.id)}
+                            className="rounded-lg bg-ink px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
+                          >
+                            {isBusy ? "…" : canAfford ? "Unlock" : "Need points"}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
         )}
 
         {shop && (

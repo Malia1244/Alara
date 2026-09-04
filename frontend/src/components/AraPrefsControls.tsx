@@ -1,7 +1,17 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useAraPrefs } from "@/components/AraPrefsProvider";
-import type { UiTheme } from "@/lib/araPrefs";
+import {
+  isThemeUnlocked,
+  themeShopId,
+  type UiTheme,
+} from "@/lib/araPrefs";
+import {
+  fetchShopState,
+  purchaseShopItem,
+  type ShopState,
+} from "@/lib/api";
 
 type Props = {
   className?: string;
@@ -50,10 +60,14 @@ function ToggleRow({
   );
 }
 
-const THEMES: { id: UiTheme; label: string }[] = [
-  { id: "original", label: "Original" },
-  { id: "sleek", label: "Sleek" },
-  { id: "playful", label: "Playful" },
+const THEMES: {
+  id: UiTheme;
+  label: string;
+  priceLabel: string;
+}[] = [
+  { id: "original", label: "Original", priceLabel: "Free" },
+  { id: "sleek", label: "Sleek", priceLabel: "150 pts" },
+  { id: "playful", label: "Playful", priceLabel: "150 pts" },
 ];
 
 export default function AraPrefsControls({
@@ -68,6 +82,31 @@ export default function AraPrefsControls({
     setReminderHour,
     setTheme,
   } = useAraPrefs();
+  const [shop, setShop] = useState<ShopState | null>(null);
+  const [busyTheme, setBusyTheme] = useState<UiTheme | null>(null);
+  const [themeError, setThemeError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchShopState()
+      .then((data) => {
+        if (!cancelled) setShop(data);
+      })
+      .catch(() => {
+        // Themes stay selectable as Original if shop can't load.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // If prefs point at a locked theme, fall back to Original.
+  useEffect(() => {
+    if (!shop) return;
+    if (!isThemeUnlocked(prefs.theme, shop.owned_item_ids)) {
+      setTheme("original");
+    }
+  }, [shop, prefs.theme, setTheme]);
 
   async function handleRemindersToggle(on: boolean) {
     if (on && typeof window !== "undefined" && "Notification" in window) {
@@ -80,6 +119,42 @@ export default function AraPrefsControls({
       }
     }
     setStudyReminders(on);
+  }
+
+  async function handleThemeClick(theme: UiTheme) {
+    setThemeError(null);
+    if (theme === "original") {
+      setTheme("original");
+      return;
+    }
+    if (shop && isThemeUnlocked(theme, shop.owned_item_ids)) {
+      setTheme(theme);
+      return;
+    }
+    const itemId = themeShopId(theme);
+    if (!itemId) return;
+    if (!shop) {
+      setThemeError("Couldn't reach the shop to unlock themes.");
+      return;
+    }
+    const item = shop.items.find((i) => i.id === itemId);
+    const price = item?.price ?? 150;
+    if (shop.points < price) {
+      setThemeError(`Need ${price} pts to unlock ${theme}.`);
+      return;
+    }
+    setBusyTheme(theme);
+    try {
+      const updated = await purchaseShopItem(itemId);
+      setShop(updated);
+      setTheme(theme);
+    } catch (err) {
+      setThemeError(
+        err instanceof Error ? err.message : "Couldn't unlock that theme."
+      );
+    } finally {
+      setBusyTheme(null);
+    }
   }
 
   return (
@@ -144,23 +219,51 @@ export default function AraPrefsControls({
           <p className="text-xs font-medium text-stone-600">Theme</p>
           <div className="grid grid-cols-3 gap-1.5">
             {THEMES.map((t) => {
+              const unlocked =
+                t.id === "original" ||
+                (shop != null && isThemeUnlocked(t.id, shop.owned_item_ids));
               const active = prefs.theme === t.id;
+              const busy = busyTheme === t.id;
               return (
                 <button
                   key={t.id}
                   type="button"
-                  onClick={() => setTheme(t.id)}
-                  className={`rounded-lg px-2 py-2 text-[11px] font-semibold transition ${
+                  disabled={busy}
+                  onClick={() => {
+                    void handleThemeClick(t.id);
+                  }}
+                  className={`rounded-lg px-2 py-2 text-[11px] font-semibold transition disabled:opacity-60 ${
                     active
                       ? "bg-brand text-white"
-                      : "border border-border bg-white text-stone-600 hover:border-brand/40"
+                      : unlocked
+                        ? "border border-border bg-white text-stone-600 hover:border-brand/40"
+                        : "border border-dashed border-border bg-panel text-muted"
                   }`}
                 >
-                  {t.label}
+                  <span className="block">{t.label}</span>
+                  <span
+                    className={`mt-0.5 block text-[10px] font-medium ${
+                      active ? "text-white/80" : "text-muted"
+                    }`}
+                  >
+                    {busy
+                      ? "…"
+                      : unlocked
+                        ? t.id === "original"
+                          ? "Free"
+                          : "Owned"
+                        : t.priceLabel}
+                  </span>
                 </button>
               );
             })}
           </div>
+          {themeError && (
+            <p className="text-[10px] font-medium text-accent">{themeError}</p>
+          )}
+          <p className="text-[10px] leading-snug text-muted">
+            Unlock Sleek or Playful with shop points, then tap to use.
+          </p>
         </div>
       </div>
     </div>

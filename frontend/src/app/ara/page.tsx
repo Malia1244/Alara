@@ -50,7 +50,9 @@ export default function AraPage() {
   const ownedItems = useMemo(() => {
     if (!shop) return [] as ShopItem[];
     const owned = new Set([...shop.owned_item_ids, ...FREE_STARTER_IDS]);
-    return shop.items.filter((item) => owned.has(item.id));
+    return shop.items.filter(
+      (item) => owned.has(item.id) && item.slot === "outfit"
+    );
   }, [shop]);
 
   async function handleEquip(itemId: string) {

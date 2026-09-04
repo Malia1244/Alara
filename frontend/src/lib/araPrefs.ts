@@ -1,5 +1,26 @@
 export type UiTheme = "original" | "sleek" | "playful";
 
+/** Shop item ids that unlock paid UI themes. */
+export const THEME_SHOP_IDS: Record<Exclude<UiTheme, "original">, string> = {
+  sleek: "theme-sleek",
+  playful: "theme-playful",
+};
+
+export function themeShopId(theme: UiTheme): string | null {
+  if (theme === "original") return null;
+  return THEME_SHOP_IDS[theme];
+}
+
+export function isThemeUnlocked(
+  theme: UiTheme,
+  ownedItemIds: string[] | Set<string>
+): boolean {
+  if (theme === "original") return true;
+  const id = THEME_SHOP_IDS[theme];
+  if (ownedItemIds instanceof Set) return ownedItemIds.has(id);
+  return ownedItemIds.includes(id);
+}
+
 export type AraPrefs = {
   /** Idle bob + pose-change bounce */
   motion: boolean;

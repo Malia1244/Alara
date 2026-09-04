@@ -205,6 +205,22 @@ SHOP_CATALOG = [
         "slot": "outfit",
         "pieces": "Classic Pigtails · Pink stripe sweater · Pink sweats · Heart Mary Janes",
     },
+    {
+        "id": "theme-sleek",
+        "name": "Sleek Mode",
+        "emoji": "🖤",
+        "price": 150,
+        "slot": "theme",
+        "pieces": "Clean gray & indigo app look — unlock with points",
+    },
+    {
+        "id": "theme-playful",
+        "name": "Playful Mode",
+        "emoji": "🎀",
+        "price": 150,
+        "slot": "theme",
+        "pieces": "Warm orange & pink app look — unlock with points",
+    },
 ]
 
 SHOP_ITEMS_BY_ID = {item["id"]: item for item in SHOP_CATALOG}
@@ -1520,9 +1536,9 @@ def purchase_item(purchase: PurchaseRequest, user_id: CurrentUserId):
     ).execute()
     owned_item_ids.append(purchase.item_id)
 
-    # Auto-equip bought looks (or free starters) as the active complete outfit.
+    # Auto-equip bought complete looks only (not themes / accessories).
     equipped = get_equipped_map(supabase, user_id)
-    should_auto_equip = (
+    should_auto_equip = item.get("slot") == "outfit" and (
         item["id"] in FREE_STARTER_ITEM_IDS or "outfit" not in equipped
     )
     if should_auto_equip:
@@ -1553,6 +1569,12 @@ def equip_item(equip: EquipRequest, user_id: CurrentUserId):
         and equip.item_id not in FREE_STARTER_ITEM_IDS
     ):
         raise HTTPException(status_code=400, detail="You don't own this item yet")
+
+    if item.get("slot") != "outfit":
+        raise HTTPException(
+            status_code=400,
+            detail="Only complete outfits can be worn. Themes unlock in Ara options.",
+        )
 
     _equip_complete_look(supabase, user_id, item["id"])
 
