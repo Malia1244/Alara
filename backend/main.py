@@ -21,6 +21,7 @@ from ai import (
     generate_flashcards,
     generate_quiz_questions,
     homework_help_reply,
+    is_meta_quiz_item,
     is_meta_quiz_question,
     summarize_miss_topics,
     teach_ara_opener,
@@ -281,6 +282,25 @@ def to_subject(row: dict) -> Subject:
         days_until_test=days_until_test,
         created_at=row["created_at"],
     )
+
+
+# Stored when the student checks in with nothing new to log; quizzes review
+# past notes instead. Keep in sync with frontend/src/lib/learning.ts.
+NO_NEW_LEARNING_CONTENT = "No new material today — reviewing past notes."
+
+
+def is_no_new_learning(content: Optional[str]) -> bool:
+    return (content or "").strip() == NO_NEW_LEARNING_CONTENT
+
+
+def study_note_chunks(rows: list) -> list[str]:
+    """Real study notes only — skip empty / no-new check-ins."""
+    chunks: list[str] = []
+    for row in rows:
+        text = (row.get("content") or "").strip()
+        if text and not is_no_new_learning(text):
+            chunks.append(text)
+    return chunks
 
 
 class LearningEntryCreate(BaseModel):
@@ -982,13 +1002,14 @@ def create_practice_deck(
         .execute()
     )
     entries = entries_response.data or []
-    if not entries:
+    note_chunks = study_note_chunks(entries)
+    if not note_chunks:
         raise HTTPException(
             status_code=400,
             detail="Log some notes in this subject before practicing.",
         )
 
-    notes = "\n\n".join(row["content"] for row in entries)
+    notes = "\n\n".join(note_chunks)
     exclude = [f.strip() for f in body.exclude_fronts if f and f.strip()]
     try:
         cards = generate_flashcards(
@@ -1184,6 +1205,11 @@ def explain_saved_entry(entry_id: str, user_id: CurrentUserId):
     entry = response.data
     if not entry:
         raise HTTPException(status_code=404, detail="Learning entry not found")
+    if is_no_new_learning(entry.get("content")):
+        raise HTTPException(
+            status_code=400,
+            detail="Nothing new was logged today — open a past notes entry to explain.",
+        )
 
     result = explain_learning_notes(
         notes=entry.get("content") or "",
@@ -1250,23 +1276,46 @@ def generate_quiz(
 
     # Quiz covers today's new notes plus everything else logged for this
     # same subject + unit, so it reviews the whole unit, not just today.
-    notes = entry["content"]
-    if entry.get("subject_id") and entry.get("unit"):
-        unit_entries_response = (
+    # "No new material" check-ins skip today's text and review past notes only.
+    review_only = is_no_new_learning(entry.get("content"))
+    past_chunks: list[str] = []
+    if entry.get("subject_id"):
+        past_query = (
             supabase.table("daily_learning_entries")
-            .select("content, created_at")
+            .select("content, created_at, unit")
             .eq("subject_id", entry["subject_id"])
             .eq("user_id", user_id)
-            .eq("unit", entry["unit"])
             .neq("id", entry["id"])
             .order("created_at", desc=True)
-            .execute()
         )
-        other_notes = "\n\n".join(
-            row["content"] for row in unit_entries_response.data
-        )
-        if other_notes:
-            notes = f"{notes}\n\n{other_notes}"
+        past_response = past_query.execute()
+        past_rows = past_response.data or []
+        # Prefer same unit; if empty (or review-only with no unit match), use all.
+        if entry.get("unit"):
+            same_unit = [
+                row
+                for row in past_rows
+                if row.get("unit") == entry["unit"]
+            ]
+            past_chunks = study_note_chunks(same_unit)
+        if not past_chunks:
+            past_chunks = study_note_chunks(past_rows)
+
+    if review_only:
+        if not past_chunks:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "No past notes to review yet. Log what you learned on "
+                    "another day first, then you can quiz without new material."
+                ),
+            )
+        notes = "\n\n".join(past_chunks)
+    else:
+        today_notes = (entry.get("content") or "").strip()
+        notes = today_notes
+        if past_chunks:
+            notes = f"{today_notes}\n\n" + "\n\n".join(past_chunks) if today_notes else "\n\n".join(past_chunks)
 
     # Pattern watch: reuse recent misses for this subject, and tell Gemini
     # which topics / questions to lean on for the fresh questions.
@@ -1309,10 +1358,11 @@ def generate_quiz(
         seen = set()
         for miss in content_misses:
             text = miss.get("question") or ""
-            if not text or text in seen:
+            full = miss.get("full_question") or {}
+            if not text or text in seen or is_meta_quiz_item(full):
                 continue
             seen.add(text)
-            unique_miss_qs.append(miss["full_question"])
+            unique_miss_qs.append(full)
         if unique_miss_qs and max_miss_reuse > 0:
             review_questions = random.sample(
                 unique_miss_qs, k=min(max_miss_reuse, len(unique_miss_qs))
@@ -1339,7 +1389,7 @@ def generate_quiz(
                 for question in row["questions"]
                 if question.get("question")
                 and question.get("question") not in reused_texts
-                and not is_meta_quiz_question(question.get("question", ""))
+                and not is_meta_quiz_item(question)
             ]
             if all_old_questions:
                 review_questions.extend(
@@ -1372,7 +1422,7 @@ def generate_quiz(
     combined_questions = [
         q
         for q in combined_questions
-        if not is_meta_quiz_question(q.get("question", ""))
+        if not is_meta_quiz_item(q)
     ]
 
     # If filtering removed too many, generate fresh content questions to fill.
@@ -1388,7 +1438,7 @@ def generate_quiz(
                 focus_topics=focus_topics or None,
             )
             for q in extras:
-                if is_meta_quiz_question(q.get("question", "")):
+                if is_meta_quiz_item(q):
                     continue
                 combined_questions.append(q)
                 if len(combined_questions) >= total_questions:

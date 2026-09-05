@@ -1,15 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 import {
   createLearningEntry,
+  deleteSubject,
   fetchLearningEntries,
   fetchSubject,
   type LearningEntry,
   type Subject,
 } from "@/lib/api";
+import {
+  NO_NEW_LEARNING_CONTENT,
+  displayLearningContent,
+  hasStudyNotes,
+  isNoNewLearning,
+} from "@/lib/learning";
 import QuizPanel, { type QuizStatus } from "@/components/QuizPanel";
 import NotesExplainCard from "@/components/NotesExplainCard";
 import NotesInput from "@/components/NotesInput";
@@ -37,6 +44,7 @@ function isToday(iso: string) {
 
 export default function SubjectPage() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
   const subjectId = params.id;
 
   const [subject, setSubject] = useState<Subject | null>(null);
@@ -44,6 +52,7 @@ export default function SubjectPage() {
   const [content, setContent] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Tracks today's quiz so we know when to reveal the rest of the page.
   const [todaysQuizStatus, setTodaysQuizStatus] = useState<QuizStatus | null>(
@@ -76,27 +85,27 @@ export default function SubjectPage() {
 
   const todaysEntry = entries.find((e) => isToday(e.created_at)) ?? null;
   const pastEntries = entries.filter((e) => e.id !== todaysEntry?.id);
+  const hasPastStudyNotes = entries.some((e) => hasStudyNotes(e.content));
   const needsTestCheckIn =
     subject != null &&
     subject.test_date != null &&
     subject.days_until_test != null &&
     subject.days_until_test <= 0;
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    if (!content.trim()) return;
-
+  async function saveEntry(notes: string, reviewingPast: boolean) {
     setIsSaving(true);
     setError(null);
     try {
       const saved = await createLearningEntry({
         subject_id: subjectId,
-        content,
+        content: notes,
       });
       setContent("");
       if (saved.points_earned && saved.points_earned > 0) {
         setPrizeMessage(
-          `Nice! +${saved.points_earned} shop points for logging what you learned.`
+          reviewingPast
+            ? `Nice! +${saved.points_earned} shop points — today's quiz will review past notes.`
+            : `Nice! +${saved.points_earned} shop points for logging what you learned.`
         );
       }
       await loadData();
@@ -104,6 +113,40 @@ export default function SubjectPage() {
       setError("Couldn't save your entry. Please try again.");
     } finally {
       setIsSaving(false);
+    }
+  }
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!content.trim()) return;
+    await saveEntry(content, false);
+  }
+
+  async function handleNoNewLearning() {
+    if (!hasPastStudyNotes) {
+      setError(
+        "No past notes to review yet. Log what you learned first, then you can check in without new material."
+      );
+      return;
+    }
+    await saveEntry(NO_NEW_LEARNING_CONTENT, true);
+  }
+
+  async function handleRemoveSubject() {
+    if (!subject) return;
+    const ok = window.confirm(
+      `Remove “${subject.name}”? Its notes and quizzes will be deleted too.`
+    );
+    if (!ok) return;
+
+    setIsDeleting(true);
+    setError(null);
+    try {
+      await deleteSubject(subject.id);
+      router.push("/");
+    } catch {
+      setError("Couldn't remove that subject. Please try again.");
+      setIsDeleting(false);
     }
   }
 
@@ -145,12 +188,22 @@ export default function SubjectPage() {
             </p>
           )}
           {subject && (
-            <Link
-              href={`/subjects/${subjectId}/practice`}
-              className="mt-2 inline-flex rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-ink"
-            >
-              Practice / Test
-            </Link>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <Link
+                href={`/subjects/${subjectId}/practice`}
+                className="inline-flex rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-ink"
+              >
+                Practice / Test
+              </Link>
+              <button
+                type="button"
+                onClick={handleRemoveSubject}
+                disabled={isDeleting}
+                className="inline-flex rounded-lg border border-border bg-surface px-4 py-2.5 text-sm font-semibold text-muted transition-colors hover:border-accent/40 hover:bg-accent-soft hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isDeleting ? "Removing…" : "Remove subject"}
+              </button>
+            </div>
           )}
         </header>
 
@@ -194,13 +247,28 @@ export default function SubjectPage() {
               unit={subject?.unit}
             />
 
-            <button
-              type="submit"
-              disabled={isSaving}
-              className="self-start rounded-lg bg-brand px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-ink disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {isSaving ? "Saving…" : "Save today's learning"}
-            </button>
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="submit"
+                disabled={isSaving}
+                className="rounded-lg bg-brand px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-ink disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isSaving ? "Saving…" : "Save today's learning"}
+              </button>
+              <button
+                type="button"
+                disabled={isSaving}
+                onClick={handleNoNewLearning}
+                className="rounded-lg border border-border bg-surface px-5 py-2.5 text-sm font-semibold text-ink/80 transition-colors hover:border-brand/40 hover:text-brand-ink disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                We didn&apos;t learn anything
+              </button>
+            </div>
+            <p className="text-xs text-muted">
+              Nothing new? Check in anyway — today&apos;s quiz will review past
+              notes for this subject
+              {!hasPastStudyNotes ? " (add notes on another day first)" : ""}.
+            </p>
           </form>
         )}
 
@@ -209,24 +277,28 @@ export default function SubjectPage() {
             <div className="rounded-2xl border border-border bg-surface p-5">
               <div className="flex items-center justify-between gap-2">
                 <span className="rounded-lg bg-brand-soft px-3 py-1 text-xs font-semibold text-brand">
-                  Today&apos;s learning
+                  {isNoNewLearning(todaysEntry.content)
+                    ? "Today's check-in"
+                    : "Today's learning"}
                 </span>
                 <span className="text-xs text-muted">
                   {formatDate(todaysEntry.created_at)}
                 </span>
               </div>
               <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-ink/80">
-                {todaysEntry.content}
+                {displayLearningContent(todaysEntry.content)}
               </p>
-              <div className="mt-4">
-                <NotesExplainCard
-                  entryId={todaysEntry.id}
-                  content={todaysEntry.content}
-                  subjectName={todaysEntry.subject}
-                  unit={todaysEntry.unit}
-                  compact
-                />
-              </div>
+              {!isNoNewLearning(todaysEntry.content) && (
+                <div className="mt-4">
+                  <NotesExplainCard
+                    entryId={todaysEntry.id}
+                    content={todaysEntry.content}
+                    subjectName={todaysEntry.subject}
+                    unit={todaysEntry.unit}
+                    compact
+                  />
+                </div>
+              )}
             </div>
 
             <div className="rounded-2xl border border-border bg-surface p-5">
@@ -266,17 +338,19 @@ export default function SubjectPage() {
                     </span>
                   </div>
                   <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-ink/75">
-                    {entry.content}
+                    {displayLearningContent(entry.content)}
                   </p>
-                  <div className="mt-3">
-                    <NotesExplainCard
-                      entryId={entry.id}
-                      content={entry.content}
-                      subjectName={entry.subject}
-                      unit={entry.unit}
-                      compact
-                    />
-                  </div>
+                  {hasStudyNotes(entry.content) && (
+                    <div className="mt-3">
+                      <NotesExplainCard
+                        entryId={entry.id}
+                        content={entry.content}
+                        subjectName={entry.subject}
+                        unit={entry.unit}
+                        compact
+                      />
+                    </div>
+                  )}
                   <QuizPanel entryId={entry.id} />
                 </li>
               ))}

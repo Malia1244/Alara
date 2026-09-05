@@ -336,7 +336,7 @@ export default function Home() {
                   onClick={() => handleDeleteSubject(subject)}
                   disabled={deletingId === subject.id}
                   aria-label={`Remove ${subject.name}`}
-                  className="absolute right-3 top-3 z-10 rounded-md border border-border bg-surface px-2 py-1 text-[11px] font-semibold text-muted opacity-100 transition-colors hover:border-accent/40 hover:bg-accent-soft hover:text-accent disabled:opacity-50 sm:opacity-0 sm:group-hover:opacity-100"
+                  className="absolute right-3 top-3 z-10 rounded-md border border-border bg-surface px-2 py-1 text-[11px] font-semibold text-muted transition-colors hover:border-accent/40 hover:bg-accent-soft hover:text-accent disabled:opacity-50"
                 >
                   {deletingId === subject.id ? "…" : "Remove"}
                 </button>

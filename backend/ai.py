@@ -107,18 +107,61 @@ _META_QUIZ_PATTERNS = [
         r"\b(on )?this exact day\b",
         r"\b(today|this day|this session)\b.*\b(learn|learned|study|studied|cover|covered)\b",
         r"\b(learn|learned|study|studied|cover|covered)\b.*\b(today|this day|this exact day|this session)\b",
-        r"\bdid (you|we|i) learn\b",
+        r"\bdid (you|we|i) (learn|study|cover|practice)\b",
         r"\bwhat activity did (you|we|i)\b",
         r"\bwhat (have|had) (you|we|i) been (learning|studying)\b",
-        r"\bwhich (topic|subject) did (you|we|i) (study|cover|learn)\b",
+        r"\bwhich (topic|subject|material) did (you|we|i) (study|cover|learn)\b",
+        r"\bwhich of the following did (you|we|i) (learn|study|cover)\b",
         r"\bwe (studied|learned|covered|reviewed)\b.*\b(true or false|t/?f)\b",
         r"\b(true or false|t/?f)\b.*\bwe (studied|learned|covered|reviewed)\b",
         r"\baccording to (your|the) notes,? what did\b",
+        r"\b(your|the) notes (were|are) about\b",
+        r"\b(your|the) notes covered\b",
         r"\bwhat was (today'?s|this) (lesson|topic|focus|subject)\b",
         r"\bmain thing (you|we|i) (learned|studied|covered)\b",
         r"\bfocus of (today|this (day|lesson|session))\b",
+        r"\bwhat (are|were) (you|we|i) (learning|studying|working on)\b",
+        r"\bbased on (your|the) (study )?session\b",
+        r"\bfrom (your|the) (learning|study) (entry|log|session)\b",
     )
 ]
+
+# Correct answers that are topic labels / diary replies, not knowledge.
+_META_ANSWER_PATTERNS = [
+    re.compile(p, re.IGNORECASE)
+    for p in (
+        r"^(the )?(alphabet|abc'?s?|notes|lesson|homework|class|today|"
+        r"session|material|topic|subject|unit)$",
+        r"^(what )?(i|we|you) (learned|studied|covered|practiced).*$",
+        r"^(my|our|the|today'?s?) (notes|lesson|homework|topic|focus)$",
+        r"^(learning|studying|reviewing|practicing) .+$",
+        r"^nothing( special)?$",
+        r"^i don'?t (know|remember)$",
+    )
+]
+
+_VAGUE_NOTES_PATTERNS = [
+    re.compile(p, re.IGNORECASE)
+    for p in (
+        r"\b(we|i|you) (learned|studied|covered|practiced|reviewed)\b",
+        r"\btoday (we|i) (learned|studied|covered)\b",
+        r"\bworked on\b",
+        r"\blearned about\b",
+    )
+]
+
+FACTS_FOR_QUIZ_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "topic": {"type": "string"},
+        "facts": {
+            "type": "array",
+            "items": {"type": "string"},
+            "minItems": 4,
+        },
+    },
+    "required": ["topic", "facts"],
+}
 
 
 def is_meta_quiz_question(question: str) -> bool:
@@ -127,6 +170,79 @@ def is_meta_quiz_question(question: str) -> bool:
     if not text:
         return False
     return any(pattern.search(text) for pattern in _META_QUIZ_PATTERNS)
+
+
+def _looks_like_meta_answer(answer: str) -> bool:
+    text = (answer or "").strip()
+    if not text:
+        return False
+    return any(pattern.search(text) for pattern in _META_ANSWER_PATTERNS)
+
+
+def is_meta_quiz_item(item: dict) -> bool:
+    """True if the question or its correct option is session/diary meta."""
+    if is_meta_quiz_question(item.get("question", "")):
+        return True
+    options = item.get("options") or []
+    idx = item.get("correct_index")
+    if isinstance(idx, int) and 0 <= idx < len(options):
+        if _looks_like_meta_answer(str(options[idx])):
+            return True
+    return False
+
+
+def _notes_need_fact_expansion(notes: str) -> bool:
+    text = (notes or "").strip()
+    if len(text) < 220:
+        return True
+    lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+    if len(lines) <= 3 and any(p.search(text) for p in _VAGUE_NOTES_PATTERNS):
+        return True
+    return False
+
+
+def expand_notes_for_quiz(subject: str, notes: str) -> str:
+    """
+    Turn thin/vague study logs into concrete facts the quiz can test.
+    Falls back to the original notes if expansion fails.
+    """
+    text = (notes or "").strip()
+    if not text or not _notes_need_fact_expansion(text):
+        return text
+
+    prompt = (
+        f"A student logged brief notes for {subject}. Expand them into "
+        f"concrete study facts that a real quiz could test.\n\n"
+        f"Notes:\n---\n{text}\n---\n\n"
+        f"Return a short topic label plus at least 6 specific facts, rules, "
+        f"definitions, steps, examples, or skills from that topic.\n"
+        f"If notes only say something like \"we learned the alphabet\", "
+        f"list alphabet knowledge itself (letter order, vowel vs consonant, "
+        f"letter sounds, words that start with a letter, uppercase/lowercase).\n"
+        f"Do NOT list meta facts like \"the student studied today\" or "
+        f"\"the topic was the alphabet\". Every fact must be content."
+    )
+    try:
+        parsed = _gemini_json(prompt, FACTS_FOR_QUIZ_SCHEMA)
+    except Exception:
+        return text
+
+    facts = [
+        str(f).strip()
+        for f in (parsed.get("facts") or [])
+        if str(f).strip() and not is_meta_quiz_question(str(f))
+    ]
+    if len(facts) < 4:
+        return text
+
+    topic = str(parsed.get("topic") or subject).strip() or subject
+    bullet_block = "\n".join(f"- {f}" for f in facts[:16])
+    return (
+        f"Topic: {topic}\n"
+        f"Original notes: {text}\n"
+        f"Quizable facts (use ONLY these as the quiz source):\n"
+        f"{bullet_block}"
+    )
 
 TEACH_OPENER_SCHEMA = {
     "type": "object",
@@ -243,6 +359,9 @@ def generate_quiz_questions(
         q for q in (focus_misses or []) if q and not is_meta_quiz_question(q)
     ]
 
+    # Thin logs like "we learned the alphabet" become concrete facts first.
+    quiz_source = expand_notes_for_quiz(subject, notes)
+
     focus_block = ""
     if content_misses or focus_topics:
         focus_block = (
@@ -268,70 +387,65 @@ def generate_quiz_questions(
     difficulty_key = difficulty if difficulty in _DIFFICULTY_GUIDANCE else "medium"
     difficulty_block = _DIFFICULTY_GUIDANCE[difficulty_key]
 
-    prompt = (
-        f"You are a friendly tutor helping a student review {subject}.\n\n"
-        f"Here are their study notes (the SOURCE of facts to quiz on):\n"
-        f"---\n{notes}\n---\n"
-        f"{focus_block}\n"
-        f"{difficulty_block}\n\n"
-        f"Write {num_questions} multiple choice questions that test the "
-        f"ACTUAL information, skills, facts, vocabulary, and concepts in "
-        f"those notes — as if this were a real class quiz on the material.\n\n"
-        f"Every question MUST check a concrete fact or skill from the notes "
-        f"(letter order, sounds, definitions, steps, formulas, examples, "
-        f"cause/effect, vocabulary meaning, etc.).\n\n"
-        f"CRITICAL — FORBIDDEN meta / diary questions about the learning "
-        f"session. The student already knows what they studied. Never ask "
-        f"what they learned, covered, studied, practiced, or did today / "
-        f"this day / this session. Ban questions like:\n"
-        f"- What did we / you learn today / on this exact day?\n"
-        f"- What subject / topic did we cover?\n"
-        f"- Did we learn the alphabet / X?\n"
-        f"- What was in your notes?\n"
-        f"- What activity did you do?\n"
-        f"- What was today's lesson / focus?\n\n"
-        f"GOOD examples (content): \"Which letter comes after M?\" "
-        f"\"What sound does B make?\" \"Which word starts with A?\" "
-        f"\"What does photosynthesis produce?\"\n"
-        f"BAD examples (meta — never write these): "
-        f"\"What did you learn today?\" "
-        f"\"What did you learn on this exact day?\" "
-        f"\"We studied the alphabet — true or false?\" "
-        f"\"What topic was in your notes?\"\n\n"
-        f"If the notes only say something vague like \"we learned the "
-        f"alphabet\", still quiz the alphabet itself (letter order, "
-        f"sounds, examples) — not the fact that they studied it. "
-        f"Answers like \"the alphabet\" or \"math\" or \"today's notes\" "
-        f"usually mean the question is meta — rewrite it as a content "
-        f"question instead.\n\n"
-        f"Each question needs exactly 4 answer options, with only one "
-        f"correct answer. Keep wording clear and age-appropriate for a "
-        f"middle/high school student. Vary which option index (0-3) is "
-        f"correct."
-    )
-
-    parsed = _gemini_json(prompt, RESPONSE_SCHEMA)
-    questions = [
-        q
-        for q in parsed["questions"]
-        if not is_meta_quiz_question(q.get("question", ""))
-    ]
-
-    # One refill if the model still slipped meta questions through.
-    shortfall = num_questions - len(questions)
-    if shortfall > 0 and shortfall < num_questions:
-        refill = _gemini_json(
-            prompt.replace(
-                f"Write {num_questions} multiple choice questions",
-                f"Write {shortfall} multiple choice questions",
-                1,
-            ),
-            RESPONSE_SCHEMA,
+    def _build_prompt(count: int) -> str:
+        return (
+            f"You are a friendly tutor helping a student review {subject}.\n\n"
+            f"Here is the study material (the ONLY source of facts to quiz on):\n"
+            f"---\n{quiz_source}\n---\n"
+            f"{focus_block}\n"
+            f"{difficulty_block}\n\n"
+            f"Write {count} multiple choice questions that test the "
+            f"ACTUAL information, skills, facts, vocabulary, and concepts "
+            f"above — as if this were a real class quiz on the material.\n\n"
+            f"Every question MUST check a concrete fact or skill "
+            f"(letter order, sounds, definitions, steps, formulas, examples, "
+            f"cause/effect, vocabulary meaning, etc.).\n\n"
+            f"A student who never saw these notes should still be able to "
+            f"answer from knowing the subject content — not from remembering "
+            f"what was logged in the app.\n\n"
+            f"CRITICAL — FORBIDDEN meta / diary questions about the learning "
+            f"session. The student already knows what they studied. Never ask "
+            f"what they learned, covered, studied, practiced, or did today / "
+            f"this day / this session. Ban questions like:\n"
+            f"- What did we / you learn today / on this exact day?\n"
+            f"- What subject / topic did we cover?\n"
+            f"- Did we learn the alphabet / X?\n"
+            f"- What was in your notes?\n"
+            f"- What activity did you do?\n"
+            f"- What was today's lesson / focus?\n\n"
+            f"GOOD examples (content): \"Which letter comes after M?\" "
+            f"\"What sound does B make?\" \"Which word starts with A?\" "
+            f"\"What does photosynthesis produce?\"\n"
+            f"BAD examples (meta — never write these): "
+            f"\"What did you learn today?\" "
+            f"\"What did you learn on this exact day?\" "
+            f"\"We studied the alphabet — true or false?\" "
+            f"\"What topic was in your notes?\"\n\n"
+            f"Never use topic labels as the correct answer "
+            f"(e.g. \"the alphabet\", \"today's notes\", \"math\"). "
+            f"The correct option must be a real content answer "
+            f"(a letter, sound, definition, number, example, etc.).\n\n"
+            f"Each question needs exactly 4 answer options, with only one "
+            f"correct answer. Keep wording clear and age-appropriate for a "
+            f"middle/high school student. Vary which option index (0-3) is "
+            f"correct."
         )
-        for q in refill["questions"]:
-            if is_meta_quiz_question(q.get("question", "")):
+
+    questions: list[QuizQuestion] = []
+    seen_questions: set[str] = set()
+
+    # Generate, then refill until we have enough content questions (or give up).
+    for attempt in range(3):
+        shortfall = num_questions - len(questions)
+        if shortfall <= 0:
+            break
+        parsed = _gemini_json(_build_prompt(shortfall), RESPONSE_SCHEMA)
+        for q in parsed.get("questions") or []:
+            text = (q.get("question") or "").strip()
+            if not text or text in seen_questions or is_meta_quiz_item(q):
                 continue
-            questions.append(q)
+            seen_questions.add(text)
+            questions.append(q)  # type: ignore[arg-type]
             if len(questions) >= num_questions:
                 break
 
