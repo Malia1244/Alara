@@ -54,16 +54,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signUp = useCallback(async (email: string, password: string) => {
-    const { error } = await supabase.auth.signUp({ email, password });
-    return error?.message ?? null;
+    try {
+      const { error } = await supabase.auth.signUp({ email, password });
+      return error?.message ?? null;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (/failed to fetch|networkerror|load failed/i.test(msg)) {
+        return "Can't reach Supabase right now. Check that your project is active (not paused) and NEXT_PUBLIC_SUPABASE_URL is correct.";
+      }
+      return msg || "Sign up failed.";
+    }
   }, []);
 
   const signIn = useCallback(async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    return error?.message ?? null;
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      return error?.message ?? null;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (/failed to fetch|networkerror|load failed/i.test(msg)) {
+        return "Can't reach Supabase right now. Check that your project is active (not paused) and NEXT_PUBLIC_SUPABASE_URL is correct.";
+      }
+      return msg || "Sign in failed.";
+    }
   }, []);
 
   const signOut = useCallback(async () => {
