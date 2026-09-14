@@ -5,6 +5,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import CharacterStage from "@/components/CharacterStage";
 import { useAraPrefs } from "@/components/AraPrefsProvider";
 import AraPrefsControls from "@/components/AraPrefsControls";
+import DiscordInviteLink from "@/components/DiscordInviteLink";
 import {
   createSubject,
   deleteSubject,
@@ -235,6 +236,8 @@ export default function Home() {
             />
           </div>
         </header>
+
+        <DiscordInviteLink variant="banner" />
 
         {showTip && coachLine && (
           <div className="ara-callout ara-speech-bubble px-4 py-3 text-sm text-ink">

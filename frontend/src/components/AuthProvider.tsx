@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import type { Session, User } from "@supabase/supabase-js";
+import { clearCachedLookSrc } from "@/lib/araOutfitCache";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 
 type AuthContextValue = {
@@ -42,7 +43,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, next) => {
+      if (event === "SIGNED_OUT") {
+        clearCachedLookSrc();
+      }
+      // Switching accounts: drop previous look until this user's shop loads.
+      if (event === "SIGNED_IN") {
+        clearCachedLookSrc();
+      }
       setSession(next);
       setIsLoading(false);
     });
@@ -83,6 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signOut = useCallback(async () => {
+    clearCachedLookSrc();
     await supabase.auth.signOut();
   }, []);
 

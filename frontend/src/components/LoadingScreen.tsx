@@ -18,8 +18,7 @@ export default function LoadingScreen({
           <AraAvatar
             size={120}
             pose="wave"
-            showOutfits={false}
-            motion="idle"
+            motion="none"
             priority
           />
         </div>

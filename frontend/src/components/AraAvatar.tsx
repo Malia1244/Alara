@@ -5,6 +5,7 @@ import { useEffect, useLayoutEffect, useState } from "react";
 import { useAraPrefs } from "@/components/AraPrefsProvider";
 import { fetchShopState, type ShopItem, type ShopState } from "@/lib/api";
 import {
+  DEFAULT_LOOK_SRC,
   lookSrcFromShop,
   readCachedLookSrc,
   writeCachedLookSrc,
@@ -177,7 +178,13 @@ export default function AraAvatar({
       return;
     }
     const cached = readCachedLookSrc();
-    if (cached) setCachedLookSrc(cached);
+    if (cached) {
+      setCachedLookSrc(cached);
+    } else {
+      // Brand-new browsers: seed the classic starter look immediately.
+      setCachedLookSrc(DEFAULT_LOOK_SRC);
+      writeCachedLookSrc(DEFAULT_LOOK_SRC);
+    }
     setOutfitReady(true);
   }, [showOutfits, shop]);
 
@@ -222,8 +229,9 @@ export default function AraAvatar({
   const srcCandidates: string[] = [];
   if (liveLookSrc) {
     srcCandidates.push(liveLookSrc);
-  } else if (cachedLookSrc && showOutfits) {
-    srcCandidates.push(cachedLookSrc);
+  } else if (showOutfits) {
+    // New users / loading: classic starter look, never bare purple pose first.
+    srcCandidates.push(cachedLookSrc || DEFAULT_LOOK_SRC);
   }
   srcCandidates.push(ARA_POSE_SRC[pose]);
 

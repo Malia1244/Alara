@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import AraPrefsControls from "@/components/AraPrefsControls";
+import DiscordInviteLink from "@/components/DiscordInviteLink";
 import { fetchShopState } from "@/lib/api";
 import { lookSrcFromShop, writeCachedLookSrc } from "@/lib/araOutfitCache";
 import {
@@ -99,6 +100,7 @@ export default function Sidebar() {
             </Link>
           );
         })}
+        <DiscordInviteLink />
       </nav>
 
       <div className="mt-auto flex flex-col gap-3">

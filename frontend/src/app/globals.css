@@ -363,14 +363,14 @@ html[data-study-scene="focus"] .app-backdrop::after {
   max-width: min(36rem, calc(100vw - 2.5rem));
 }
 
-/* Ara soft idle bob — gentle so she feels alive without distracting */
+/* Ara soft idle bob — very gentle so she feels alive without shaking */
 @keyframes ara-idle {
   0%,
   100% {
     transform: translateY(0);
   }
   50% {
-    transform: translateY(-5px);
+    transform: translateY(-2px);
   }
 }
 
@@ -378,8 +378,8 @@ html[data-study-scene="focus"] .app-backdrop::after {
   0% {
     transform: translateY(0) scale(1);
   }
-  35% {
-    transform: translateY(-8px) scale(1.04);
+  40% {
+    transform: translateY(-4px) scale(1.02);
   }
   100% {
     transform: translateY(0) scale(1);
@@ -398,49 +398,35 @@ html[data-study-scene="focus"] .app-backdrop::after {
 }
 
 .ara-idle {
-  animation: ara-idle 3.2s ease-in-out infinite;
+  animation: ara-idle 4.8s ease-in-out infinite;
   will-change: transform;
 }
 
 .ara-react {
-  animation: ara-react 0.55s ease-out 1;
+  animation: ara-react 0.5s ease-out 1;
   will-change: transform;
 }
 
-/* Celebration dance — whole portrait moves so outfit stays on */
+/* Celebration dance — light bounce, almost no rotation */
 @keyframes ara-dance {
-  0% {
-    transform: translateY(0) rotate(0deg) scale(1);
-  }
-  12% {
-    transform: translateY(-14px) rotate(-6deg) scale(1.04);
-  }
-  25% {
-    transform: translateY(-2px) rotate(5deg) scale(1.02);
-  }
-  38% {
-    transform: translateY(-16px) rotate(-4deg) scale(1.06);
-  }
-  50% {
-    transform: translateY(0) rotate(3deg) scale(1);
-  }
-  62% {
-    transform: translateY(-12px) rotate(-5deg) scale(1.05);
-  }
-  75% {
-    transform: translateY(-1px) rotate(4deg) scale(1.02);
-  }
-  88% {
-    transform: translateY(-10px) rotate(-3deg) scale(1.04);
-  }
+  0%,
   100% {
     transform: translateY(0) rotate(0deg) scale(1);
+  }
+  25% {
+    transform: translateY(-5px) rotate(-1.5deg) scale(1.02);
+  }
+  50% {
+    transform: translateY(0) rotate(0deg) scale(1);
+  }
+  75% {
+    transform: translateY(-4px) rotate(1.5deg) scale(1.015);
   }
 }
 
 .ara-dance {
-  animation: ara-dance 0.85s ease-in-out infinite;
-  transform-origin: 50% 85%;
+  animation: ara-dance 1.35s ease-in-out infinite;
+  transform-origin: 50% 90%;
   will-change: transform;
 }
 

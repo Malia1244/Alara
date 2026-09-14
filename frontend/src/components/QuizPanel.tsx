@@ -196,7 +196,7 @@ export default function QuizPanel({
     return (
       <div className="mt-4 rounded-3xl border border-border bg-surface p-4 sm:p-5">
         <div className="flex items-start gap-3">
-          <AraAvatar size={44} pose="think" className="shrink-0" />
+          <AraAvatar size={44} pose="think" motion="none" className="shrink-0" />
           <div>
             <p className="font-display text-base font-bold text-stone-900">
               Quiz setup
@@ -381,7 +381,7 @@ export default function QuizPanel({
             {error && <p className="text-sm text-rose-500">{error}</p>}
 
             <div className="flex items-center gap-2.5 rounded-2xl bg-brand-soft px-3 py-2.5">
-              <AraAvatar size={32} pose="think" className="shrink-0" />
+              <AraAvatar size={32} pose="think" motion="none" className="shrink-0" />
               <p className="text-xs font-semibold text-brand">
                 {encouragement}
               </p>
@@ -395,6 +395,7 @@ export default function QuizPanel({
           <div className="flex flex-col items-center gap-2 rounded-2xl border border-border bg-white p-4 text-center shadow-sm">
             <AraAvatar
               size={72}
+              motion="none"
               pose={
                 (result.score === result.total
                   ? "cheer"

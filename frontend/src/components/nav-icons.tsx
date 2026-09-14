@@ -156,3 +156,30 @@ export function IconTimer({ className = "h-5 w-5" }: IconProps) {
   );
 }
 
+/** Discord / community */
+export function IconDiscord({ className = "h-5 w-5" }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+      <path
+        d="M7.5 17.5 6 20l3-1.2c.9.3 1.9.5 3 .5s2.1-.2 3-.5L18 20l-1.5-2.5"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M18.2 15.2A7.5 7.5 0 0 0 19 11c0-3.6-2.9-6.5-7-6.5S5 7.4 5 11c0 1.5.4 2.9 1.2 4.1"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+      <path
+        d="M9.25 11.25h.01M14.75 11.25h.01"
+        stroke="currentColor"
+        strokeWidth="2.4"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+

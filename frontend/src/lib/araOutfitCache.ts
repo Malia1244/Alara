@@ -2,6 +2,9 @@
 
 const STORAGE_KEY = "alara-equipped-look-src";
 
+/** Classic free starter look (Lavender Soft Day). Keep in sync with backend CLASSIC_OUTFIT_ID. */
+export const DEFAULT_LOOK_SRC = "/outfits/looks/look-lavender-soft.webp";
+
 export function readCachedLookSrc(): string | null {
   if (typeof window === "undefined") return null;
   try {
@@ -30,6 +33,10 @@ export function writeCachedLookSrc(src: string | null) {
   }
 }
 
+export function clearCachedLookSrc() {
+  writeCachedLookSrc(null);
+}
+
 export function lookSrcFromShop(shop: {
   equipped: Record<string, string | null>;
   items: { id: string; slot: string; fullImage: string | null }[];
@@ -44,5 +51,6 @@ export function lookSrcFromShop(shop: {
     const item = byId[id];
     if (item?.fullImage) return `/outfits/${item.fullImage}`;
   }
-  return null;
+  // New accounts / empty equip → classic starter look, not bare pose art.
+  return DEFAULT_LOOK_SRC;
 }
