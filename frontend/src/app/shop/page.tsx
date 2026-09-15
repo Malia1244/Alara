@@ -9,6 +9,7 @@ import {
   fetchShopState,
   purchaseShopItem,
   unequipShopSlot,
+  apiUnreachableMessage,
   type ShopItem,
   type ShopState,
 } from "@/lib/api";
@@ -34,9 +35,7 @@ export default function ShopPage() {
       const data = await fetchShopState();
       setShop(data);
     } catch {
-      setError(
-        "Couldn't reach the server. Is the FastAPI backend running on port 8000?"
-      );
+      setError(apiUnreachableMessage());
     } finally {
       setIsLoading(false);
     }

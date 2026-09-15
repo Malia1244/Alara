@@ -163,6 +163,16 @@ export type TeachReply = {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
+/** Shown when fetch to the API fails (network / sleeping Render / wrong URL). */
+export function apiUnreachableMessage(): string {
+  const isLocal =
+    API_URL.includes("localhost") || API_URL.includes("127.0.0.1");
+  if (isLocal) {
+    return "Couldn't reach the server. Is the FastAPI backend running on port 8000?";
+  }
+  return "Couldn't reach Alara's server. Wait ~30 seconds and refresh — it may be waking up.";
+}
+
 /** Ping Render so a sleeping free-tier backend starts waking ASAP. */
 export async function wakeApi(): Promise<boolean> {
   try {

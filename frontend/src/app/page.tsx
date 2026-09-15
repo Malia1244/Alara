@@ -11,6 +11,7 @@ import {
   deleteSubject,
   fetchProgress,
   fetchSubjects,
+  apiUnreachableMessage,
   type Subject,
 } from "@/lib/api";
 import { araCoachLine } from "@/lib/araTips";
@@ -112,9 +113,7 @@ export default function Home() {
       const data = await fetchSubjects();
       setSubjects(data);
     } catch {
-      setError(
-        "Couldn't reach the server. Is the FastAPI backend running on port 8000?"
-      );
+      setError(apiUnreachableMessage());
     } finally {
       setIsLoading(false);
     }

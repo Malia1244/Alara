@@ -8,6 +8,7 @@ import {
   deleteSubject,
   fetchLearningEntries,
   fetchSubject,
+  apiUnreachableMessage,
   type LearningEntry,
   type Subject,
 } from "@/lib/api";
@@ -70,9 +71,7 @@ export default function SubjectPage() {
       setSubject(subjectData);
       setEntries(entriesData);
     } catch {
-      setError(
-        "Couldn't reach the server. Is the FastAPI backend running on port 8000?"
-      );
+      setError(apiUnreachableMessage());
     } finally {
       setIsLoading(false);
     }

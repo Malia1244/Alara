@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import CharacterStage from "@/components/CharacterStage";
 import { useAraPrefs } from "@/components/AraPrefsProvider";
 import AraPrefsControls from "@/components/AraPrefsControls";
-import { fetchProgress, type ProgressStats } from "@/lib/api";
+import { fetchProgress, apiUnreachableMessage, type ProgressStats } from "@/lib/api";
 import { araCoachLine } from "@/lib/araTips";
 
 export default function ProgressPage() {
@@ -22,9 +22,7 @@ export default function ProgressPage() {
       })
       .catch(() => {
         if (!cancelled) {
-          setError(
-            "Couldn't load progress. Is the FastAPI backend running on port 8000?"
-          );
+          setError(apiUnreachableMessage());
         }
       })
       .finally(() => {
