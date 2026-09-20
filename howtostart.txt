@@ -6,7 +6,9 @@ AUTH SETUP (once)
    supabase/migrations/003_fix_shop_purchases_pkey.sql
    supabase/migrations/004_ara_memories.sql
    supabase/migrations/005_enable_rls.sql
+   supabase/migrations/006_community_messages.sql
    (005 turns on Row Level Security — required to fix “table publicly accessible”)
+   (006 creates the shared Lounge chat every signed-in student can use)
 2. In Supabase → Authentication, enable Email provider.
    (Optional) turn OFF "Confirm email" while testing locally.
 3. Add to frontend/.env.local:

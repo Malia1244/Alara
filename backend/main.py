@@ -27,7 +27,7 @@ from ai import (
     teach_ara_opener,
     teach_ara_reply,
 )
-from auth import CurrentUserId
+from auth import CurrentUser, CurrentUserId
 
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
@@ -552,6 +552,32 @@ class HomeworkHelpRequest(BaseModel):
 class HomeworkHelpResponse(BaseModel):
     message: str
     follow_up: str = ""
+
+
+# Shared Lounge — one room for every signed-in student. room_id stays
+# "lounge" for now; class rooms can reuse this table later.
+LOUNGE_ROOM_ID = "lounge"
+LOUNGE_MESSAGE_LIMIT = 80
+LOUNGE_BODY_MAX = 500
+LOUNGE_SETUP_HINT = (
+    "Lounge isn't set up yet. In Supabase → SQL Editor, run "
+    "supabase/migrations/006_community_messages.sql, then try again."
+)
+
+
+class LoungeMessage(BaseModel):
+    id: str
+    user_id: str
+    room_id: str
+    author_label: str
+    body: str
+    created_at: str
+    is_mine: bool
+
+
+class LoungePostRequest(BaseModel):
+    body: str = Field(..., min_length=1, max_length=LOUNGE_BODY_MAX)
+    room_id: str = Field(default=LOUNGE_ROOM_ID, max_length=64)
 
 
 def get_equipped_map(supabase: Client, user_id: str) -> dict:
@@ -2055,6 +2081,121 @@ def homework_help(body: HomeworkHelpRequest, user_id: CurrentUserId):
         message=result["message"],
         follow_up=result.get("follow_up") or "",
     )
+
+
+def _is_missing_lounge_table(exc: BaseException) -> bool:
+    text = str(exc).lower()
+    return "community_messages" in text and (
+        "does not exist" in text
+        or "schema cache" in text
+        or "could not find the table" in text
+        or "relation" in text
+    )
+
+
+def _require_lounge_room(room_id: Optional[str]) -> str:
+    rid = (room_id or LOUNGE_ROOM_ID).strip() or LOUNGE_ROOM_ID
+    if rid != LOUNGE_ROOM_ID:
+        raise HTTPException(
+            status_code=400,
+            detail="Class rooms aren't open yet. Use the shared lounge.",
+        )
+    return rid
+
+
+def _lounge_author_label(email: Optional[str], user_id: str) -> str:
+    if email and "@" in email:
+        local = email.split("@", 1)[0].strip()
+        if local:
+            return local[:24]
+    return f"student-{user_id[:6]}"
+
+
+def _lounge_row_to_message(row: dict, user_id: str) -> LoungeMessage:
+    return LoungeMessage(
+        id=row["id"],
+        user_id=row["user_id"],
+        room_id=row["room_id"],
+        author_label=row["author_label"],
+        body=row["body"],
+        created_at=row["created_at"],
+        is_mine=row["user_id"] == user_id,
+    )
+
+
+@app.get("/lounge/messages", response_model=List[LoungeMessage])
+def list_lounge_messages(
+    user: CurrentUser,
+    room_id: str = LOUNGE_ROOM_ID,
+):
+    """Every signed-in student sees the same recent messages."""
+    room = _require_lounge_room(room_id)
+    supabase = get_supabase()
+    try:
+        response = (
+            supabase.table("community_messages")
+            .select("id, user_id, room_id, author_label, body, created_at")
+            .eq("room_id", room)
+            .order("created_at", desc=True)
+            .limit(LOUNGE_MESSAGE_LIMIT)
+            .execute()
+        )
+    except Exception as exc:
+        if _is_missing_lounge_table(exc):
+            raise HTTPException(status_code=503, detail=LOUNGE_SETUP_HINT) from exc
+        raise
+    rows = list(reversed(response.data or []))
+    return [_lounge_row_to_message(row, user.id) for row in rows]
+
+
+@app.post("/lounge/messages", response_model=LoungeMessage, status_code=201)
+def post_lounge_message(body: LoungePostRequest, user: CurrentUser):
+    room = _require_lounge_room(body.room_id)
+    text = body.body.strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="Type a message first.")
+    supabase = get_supabase()
+    row = {
+        "user_id": user.id,
+        "room_id": room,
+        "author_label": _lounge_author_label(user.email, user.id),
+        "body": text[:LOUNGE_BODY_MAX],
+    }
+    try:
+        response = supabase.table("community_messages").insert(row).execute()
+    except Exception as exc:
+        if _is_missing_lounge_table(exc):
+            raise HTTPException(status_code=503, detail=LOUNGE_SETUP_HINT) from exc
+        raise
+    if not response.data:
+        raise HTTPException(status_code=500, detail="Couldn't send that message.")
+    return _lounge_row_to_message(response.data[0], user.id)
+
+
+@app.delete("/lounge/messages/{message_id}", status_code=204)
+def delete_lounge_message(message_id: str, user: CurrentUser):
+    supabase = get_supabase()
+    try:
+        existing = (
+            supabase.table("community_messages")
+            .select("id, user_id")
+            .eq("id", message_id)
+            .limit(1)
+            .execute()
+        )
+    except Exception as exc:
+        if _is_missing_lounge_table(exc):
+            raise HTTPException(status_code=503, detail=LOUNGE_SETUP_HINT) from exc
+        raise
+    row = (existing.data or [None])[0]
+    if not row:
+        raise HTTPException(status_code=404, detail="Message not found")
+    if row["user_id"] != user.id:
+        raise HTTPException(status_code=403, detail="You can only remove your own messages.")
+    supabase.table("community_messages").delete().eq("id", message_id).eq(
+        "user_id", user.id
+    ).execute()
+    return None
 
 
 if __name__ == "__main__":

@@ -156,6 +156,47 @@ export function IconTimer({ className = "h-5 w-5" }: IconProps) {
   );
 }
 
+/** Shared lounge — two speech bubbles */
+export function IconLounge({ className = "h-5 w-5" }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+      <path
+        d="M5 6.5h9.5A1.5 1.5 0 0 1 16 8v5.25a1.5 1.5 0 0 1-1.5 1.5H9.5L6 17.5V14.75H5A1.5 1.5 0 0 1 3.5 13.25V8A1.5 1.5 0 0 1 5 6.5Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M16.5 9.5H19a1.5 1.5 0 0 1 1.5 1.5v4.25a1.5 1.5 0 0 1-1.5 1.5h-.75V19l-3-2.25H14"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/** Leave account */
+export function IconLogout({ className = "h-5 w-5" }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+      <path
+        d="M10 4.75H6.75A1.75 1.75 0 0 0 5 6.5v11a1.75 1.75 0 0 0 1.75 1.75H10"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+      <path
+        d="M10 12h9m0 0-3-3m3 3-3 3"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 /** Discord / community */
 export function IconDiscord({ className = "h-5 w-5" }: IconProps) {
   return (

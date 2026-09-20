@@ -1,11 +1,14 @@
 """
-Turns the browser's Supabase access token into a user_id.
+Turns the browser's Supabase access token into the signed-in user.
 
-Every protected API route depends on this so User A never reads User B's rows.
+Most routes only need user_id so User A never reads User B's private rows.
+The Lounge also uses email to make a public display name (never the full
+address).
 """
 
 import os
-from typing import Annotated
+from dataclasses import dataclass
+from typing import Annotated, Optional
 
 import httpx
 from dotenv import load_dotenv
@@ -17,9 +20,15 @@ SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 
 
-def get_current_user_id(
+@dataclass(frozen=True)
+class AuthUser:
+    id: str
+    email: Optional[str]
+
+
+def get_current_user(
     authorization: Annotated[str | None, Header()] = None,
-) -> str:
+) -> AuthUser:
     if not authorization or not authorization.lower().startswith("bearer "):
         raise HTTPException(
             status_code=401,
@@ -54,7 +63,16 @@ def get_current_user_id(
     user_id = data.get("id")
     if not user_id:
         raise HTTPException(status_code=401, detail="Invalid session user.")
-    return str(user_id)
+    email = data.get("email")
+    return AuthUser(
+        id=str(user_id),
+        email=str(email).strip() if email else None,
+    )
 
 
+def get_current_user_id(user: Annotated[AuthUser, Depends(get_current_user)]) -> str:
+    return user.id
+
+
+CurrentUser = Annotated[AuthUser, Depends(get_current_user)]
 CurrentUserId = Annotated[str, Depends(get_current_user_id)]

@@ -248,6 +248,26 @@ export default function Home() {
         )}
 
         <Link
+          href="/lounge"
+          className="interactive-tile flex items-center justify-between gap-4 rounded-2xl border border-border bg-surface px-5 py-4"
+        >
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-brand">
+              Everyone
+            </p>
+            <p className="mt-1 font-display text-lg font-semibold text-ink">
+              Lounge
+            </p>
+            <p className="mt-0.5 text-sm text-muted">
+              Talk with every Alara student in one shared room.
+            </p>
+          </div>
+          <span className="shrink-0 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">
+            Open
+          </span>
+        </Link>
+
+        <Link
           href="/timed-study"
           className="interactive-tile flex items-center justify-between gap-4 rounded-2xl border border-brand/25 bg-brand-soft/70 px-5 py-4"
         >

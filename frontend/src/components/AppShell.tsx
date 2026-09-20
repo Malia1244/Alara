@@ -54,7 +54,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           className={
             isPublic
               ? "relative z-10 flex min-h-full flex-1 flex-col"
-              : "relative z-10 flex min-h-full flex-1 flex-col pb-20 md:pb-0 md:pl-64"
+              : "relative z-10 flex min-h-full flex-1 flex-col pb-28 md:pb-0 md:pl-64"
           }
         >
           {!isPublic && <StudyMusicBridge />}

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { useAuth } from "@/components/AuthProvider";
+import AccountMenu from "@/components/AccountMenu";
 import AraPrefsControls from "@/components/AraPrefsControls";
 import DiscordInviteLink from "@/components/DiscordInviteLink";
 import { fetchShopState } from "@/lib/api";
@@ -12,6 +12,7 @@ import {
   IconCloset,
   IconHome,
   IconHomework,
+  IconLounge,
   IconProgress,
   IconShop,
   IconTeach,
@@ -20,6 +21,7 @@ import {
 
 const NAV_ITEMS = [
   { href: "/", label: "Home", Icon: IconHome },
+  { href: "/lounge", label: "Lounge", Icon: IconLounge },
   { href: "/timed-study", label: "Timed Study", Icon: IconTimer },
   { href: "/homework", label: "Homework", Icon: IconHomework },
   { href: "/progress", label: "Progress", Icon: IconProgress },
@@ -30,7 +32,6 @@ const NAV_ITEMS = [
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { user, signOut } = useAuth();
   const [points, setPoints] = useState<number | null>(null);
 
   useEffect(() => {
@@ -49,7 +50,7 @@ export default function Sidebar() {
   }, [pathname]);
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-border bg-surface px-4 py-6 md:flex">
+    <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col overflow-hidden border-r border-border bg-surface px-4 py-6 md:flex">
       <Link href="/" className="mb-8 flex items-center gap-3 px-2">
         <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand text-sm font-bold tracking-tight text-white">
           A
@@ -78,51 +79,43 @@ export default function Sidebar() {
         </Link>
       )}
 
-      <nav className="flex flex-col gap-0.5">
-        {NAV_ITEMS.map((item) => {
-          const isActive =
-            item.href === "/"
-              ? pathname === "/"
-              : pathname.startsWith(item.href);
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+        <nav className="flex flex-col gap-0.5">
+          {NAV_ITEMS.map((item) => {
+            const isActive =
+              item.href === "/"
+                ? pathname === "/"
+                : pathname.startsWith(item.href);
 
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
-                isActive
-                  ? "bg-brand text-white"
-                  : "text-muted hover:bg-brand-soft hover:text-brand-ink"
-              }`}
-            >
-              <item.Icon className="h-4 w-4 opacity-90" />
-              {item.label}
-            </Link>
-          );
-        })}
-        <DiscordInviteLink />
-      </nav>
-
-      <div className="mt-auto flex flex-col gap-3">
-        <AraPrefsControls compact />
-        <div className="rounded-xl border border-border bg-panel px-3.5 py-3">
-          <p className="text-sm font-semibold text-ink">Today</p>
-          <p className="mt-1 text-xs leading-snug text-muted">
-            Log notes, run a quiz, or teach Ara what you studied.
-          </p>
-        </div>
-        {user?.email && (
-          <div className="px-1">
-            <p className="truncate text-[11px] text-muted">{user.email}</p>
-            <button
-              type="button"
-              onClick={() => void signOut()}
-              className="mt-1 text-xs font-semibold text-brand-ink hover:underline"
-            >
-              Sign out
-            </button>
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                  isActive
+                    ? "bg-brand text-white"
+                    : "text-muted hover:bg-brand-soft hover:text-brand-ink"
+                }`}
+              >
+                <item.Icon className="h-4 w-4 opacity-90" />
+                {item.label}
+              </Link>
+            );
+          })}
+          <DiscordInviteLink />
+        </nav>
+        <div className="mt-auto flex flex-col gap-3 pt-4">
+          <AraPrefsControls compact />
+          <div className="rounded-xl border border-border bg-panel px-3.5 py-3">
+            <p className="text-sm font-semibold text-ink">Today</p>
+            <p className="mt-1 text-xs leading-snug text-muted">
+              Log notes, run a quiz, or teach Ara what you studied.
+            </p>
           </div>
-        )}
+        </div>
+      </div>
+      <div className="mt-3 shrink-0">
+        <AccountMenu />
       </div>
     </aside>
   );

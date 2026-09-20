@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import AccountMenu from "@/components/AccountMenu";
 import {
   IconHome,
   IconHomework,
+  IconLounge,
   IconProgress,
   IconShop,
   IconTeach,
@@ -13,6 +15,7 @@ import {
 
 const NAV_ITEMS = [
   { href: "/", label: "Home", Icon: IconHome },
+  { href: "/lounge", label: "Lounge", Icon: IconLounge },
   { href: "/timed-study", label: "Focus", Icon: IconTimer },
   { href: "/homework", label: "Help", Icon: IconHomework },
   { href: "/progress", label: "Stats", Icon: IconProgress },
@@ -25,6 +28,9 @@ export default function BottomNav() {
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-surface/95 backdrop-blur-md md:hidden">
+      <div className="mx-auto w-full max-w-3xl">
+        <AccountMenu variant="bar" />
+      </div>
       <div className="mx-auto flex w-full max-w-3xl items-center justify-around gap-0.5 px-1 py-2 sm:px-3">
         {NAV_ITEMS.map((item) => {
           const isActive =
