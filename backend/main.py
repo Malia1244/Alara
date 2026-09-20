@@ -1,7 +1,10 @@
+import base64
 import os
 import random
+import uuid
 from datetime import date, datetime, timedelta, timezone
 from typing import List, Optional
+from urllib.parse import quote
 
 from dotenv import load_dotenv
 
@@ -557,11 +560,24 @@ class HomeworkHelpResponse(BaseModel):
 # Shared Lounge — one room for every signed-in student. room_id stays
 # "lounge" for now; class rooms can reuse this table later.
 LOUNGE_ROOM_ID = "lounge"
-LOUNGE_MESSAGE_LIMIT = 80
+LOUNGE_MESSAGE_LIMIT = 100
 LOUNGE_BODY_MAX = 500
+LOUNGE_BUCKET = "lounge-images"
+LOUNGE_IMAGE_MAX_BYTES = 4 * 1024 * 1024
+LOUNGE_IMAGE_EXTS = {
+    "image/jpeg": "jpg",
+    "image/jpg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+    "image/gif": "gif",
+}
 LOUNGE_SETUP_HINT = (
     "Lounge isn't set up yet. In Supabase → SQL Editor, run "
     "supabase/migrations/006_community_messages.sql, then try again."
+)
+LOUNGE_IMAGE_SETUP_HINT = (
+    "Lounge photos aren't set up yet. In Supabase → SQL Editor, run "
+    "supabase/migrations/007_lounge_images.sql, then try again."
 )
 
 
@@ -573,11 +589,18 @@ class LoungeMessage(BaseModel):
     body: str
     created_at: str
     is_mine: bool
+    image_url: Optional[str] = None
+    reply_to_id: Optional[str] = None
+    reply_to_label: Optional[str] = None
+    reply_to_preview: Optional[str] = None
 
 
 class LoungePostRequest(BaseModel):
-    body: str = Field(..., min_length=1, max_length=LOUNGE_BODY_MAX)
+    body: str = Field(default="", max_length=LOUNGE_BODY_MAX)
     room_id: str = Field(default=LOUNGE_ROOM_ID, max_length=64)
+    reply_to_id: Optional[str] = None
+    image_base64: Optional[str] = Field(default=None, max_length=6_000_000)
+    image_mime: Optional[str] = Field(default=None, max_length=64)
 
 
 def get_equipped_map(supabase: Client, user_id: str) -> dict:
@@ -2093,6 +2116,20 @@ def _is_missing_lounge_table(exc: BaseException) -> bool:
     )
 
 
+def _needs_lounge_image_migration(exc: BaseException) -> bool:
+    text = str(exc).lower()
+    mentions_col = "image_path" in text or "reply_to_id" in text
+    mentions_bucket = "lounge-images" in text or "bucket" in text
+    missing = (
+        "does not exist" in text
+        or "schema cache" in text
+        or "could not find" in text
+        or "column" in text
+        or "not found" in text
+    )
+    return missing and (mentions_col or mentions_bucket)
+
+
 def _require_lounge_room(room_id: Optional[str]) -> str:
     rid = (room_id or LOUNGE_ROOM_ID).strip() or LOUNGE_ROOM_ID
     if rid != LOUNGE_ROOM_ID:
@@ -2111,15 +2148,102 @@ def _lounge_author_label(email: Optional[str], user_id: str) -> str:
     return f"student-{user_id[:6]}"
 
 
-def _lounge_row_to_message(row: dict, user_id: str) -> LoungeMessage:
+def _lounge_decode_image(image_base64: str, image_mime: Optional[str]) -> tuple[bytes, str, str]:
+    mime = (image_mime or "").strip().lower()
+    ext = LOUNGE_IMAGE_EXTS.get(mime)
+    if not ext:
+        raise HTTPException(
+            status_code=400,
+            detail="Please attach a JPEG, PNG, WebP, or GIF photo.",
+        )
+    raw = (image_base64 or "").strip()
+    if "," in raw and raw.lower().startswith("data:"):
+        raw = raw.split(",", 1)[1]
+    try:
+        data = base64.b64decode(raw, validate=False)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="Couldn't read that photo.") from exc
+    if not data:
+        raise HTTPException(status_code=400, detail="That photo was empty.")
+    if len(data) > LOUNGE_IMAGE_MAX_BYTES:
+        raise HTTPException(
+            status_code=400,
+            detail="That photo is too large — try one under 4 MB.",
+        )
+    return data, mime, ext
+
+
+def _lounge_upload_image(
+    supabase: Client, user_id: str, image_base64: str, image_mime: Optional[str]
+) -> str:
+    data, mime, ext = _lounge_decode_image(image_base64, image_mime)
+    path = f"{user_id}/{uuid.uuid4().hex}.{ext}"
+    try:
+        supabase.storage.from_(LOUNGE_BUCKET).upload(
+            path,
+            data,
+            {"content-type": mime, "upsert": "false"},
+        )
+    except Exception as exc:
+        if _needs_lounge_image_migration(exc) or "bucket" in str(exc).lower():
+            raise HTTPException(
+                status_code=503, detail=LOUNGE_IMAGE_SETUP_HINT
+            ) from exc
+        raise HTTPException(
+            status_code=502,
+            detail="Couldn't save that photo. Try a smaller JPEG or PNG.",
+        ) from exc
+    return path
+
+
+def _lounge_image_url(image_path: Optional[str]) -> Optional[str]:
+    if not image_path:
+        return None
+    base = (SUPABASE_URL or "").rstrip("/")
+    if not base:
+        return None
+    parts = "/".join(quote(segment, safe="-_.") for segment in str(image_path).split("/"))
+    return f"{base}/storage/v1/object/public/{LOUNGE_BUCKET}/{parts}"
+
+
+def _lounge_remove_image(supabase: Client, image_path: Optional[str]) -> None:
+    if not image_path:
+        return
+    try:
+        supabase.storage.from_(LOUNGE_BUCKET).remove([image_path])
+    except Exception:
+        return
+
+
+def _lounge_row_to_message(
+    row: dict,
+    user_id: str,
+    supabase: Client,
+    by_id: Optional[dict] = None,
+) -> LoungeMessage:
+    parent = None
+    reply_to_id = row.get("reply_to_id")
+    if reply_to_id and by_id:
+        parent = by_id.get(reply_to_id)
+    preview = None
+    if parent:
+        preview = (parent.get("body") or "").strip()
+        if not preview and parent.get("image_path"):
+            preview = "Photo"
+        if preview:
+            preview = preview[:80]
     return LoungeMessage(
         id=row["id"],
         user_id=row["user_id"],
         room_id=row["room_id"],
         author_label=row["author_label"],
-        body=row["body"],
+        body=row.get("body") or "",
         created_at=row["created_at"],
         is_mine=row["user_id"] == user_id,
+        image_url=_lounge_image_url(row.get("image_path")),
+        reply_to_id=reply_to_id,
+        reply_to_label=(parent or {}).get("author_label") if parent else None,
+        reply_to_preview=preview,
     )
 
 
@@ -2134,42 +2258,98 @@ def list_lounge_messages(
     try:
         response = (
             supabase.table("community_messages")
-            .select("id, user_id, room_id, author_label, body, created_at")
+            .select(
+                "id, user_id, room_id, author_label, body, created_at, "
+                "image_path, reply_to_id"
+            )
             .eq("room_id", room)
             .order("created_at", desc=True)
             .limit(LOUNGE_MESSAGE_LIMIT)
             .execute()
         )
     except Exception as exc:
+        if _needs_lounge_image_migration(exc):
+            raise HTTPException(
+                status_code=503, detail=LOUNGE_IMAGE_SETUP_HINT
+            ) from exc
         if _is_missing_lounge_table(exc):
             raise HTTPException(status_code=503, detail=LOUNGE_SETUP_HINT) from exc
         raise
     rows = list(reversed(response.data or []))
-    return [_lounge_row_to_message(row, user.id) for row in rows]
+    by_id = {row["id"]: row for row in rows}
+    return [_lounge_row_to_message(row, user.id, supabase, by_id) for row in rows]
 
 
 @app.post("/lounge/messages", response_model=LoungeMessage, status_code=201)
 def post_lounge_message(body: LoungePostRequest, user: CurrentUser):
     room = _require_lounge_room(body.room_id)
-    text = body.body.strip()
-    if not text:
-        raise HTTPException(status_code=400, detail="Type a message first.")
+    text = (body.body or "").strip()
+    has_image = bool(body.image_base64 and body.image_mime)
+    if not text and not has_image:
+        raise HTTPException(
+            status_code=400,
+            detail="Type a question or attach a photo of the assignment.",
+        )
     supabase = get_supabase()
+    reply_to_id = (body.reply_to_id or "").strip() or None
+    parent = None
+    if reply_to_id:
+        parent_res = (
+            supabase.table("community_messages")
+            .select("id, room_id, author_label, body, image_path")
+            .eq("id", reply_to_id)
+            .eq("room_id", room)
+            .limit(1)
+            .execute()
+        )
+        parent = (parent_res.data or [None])[0]
+        if not parent:
+            raise HTTPException(status_code=404, detail="That post isn't here anymore.")
+        # Keep threads one level under the original question.
+        if parent.get("reply_to_id"):
+            reply_to_id = parent["reply_to_id"]
+            root_res = (
+                supabase.table("community_messages")
+                .select("id, author_label, body, image_path")
+                .eq("id", reply_to_id)
+                .limit(1)
+                .execute()
+            )
+            parent = (root_res.data or [parent])[0]
+
+    image_path = None
+    if has_image:
+        image_path = _lounge_upload_image(
+            supabase, user.id, body.image_base64 or "", body.image_mime
+        )
+
     row = {
         "user_id": user.id,
         "room_id": room,
         "author_label": _lounge_author_label(user.email, user.id),
         "body": text[:LOUNGE_BODY_MAX],
+        "image_path": image_path,
+        "reply_to_id": reply_to_id,
     }
     try:
         response = supabase.table("community_messages").insert(row).execute()
     except Exception as exc:
+        _lounge_remove_image(supabase, image_path)
+        if _needs_lounge_image_migration(exc):
+            raise HTTPException(
+                status_code=503, detail=LOUNGE_IMAGE_SETUP_HINT
+            ) from exc
         if _is_missing_lounge_table(exc):
             raise HTTPException(status_code=503, detail=LOUNGE_SETUP_HINT) from exc
         raise
     if not response.data:
+        _lounge_remove_image(supabase, image_path)
         raise HTTPException(status_code=500, detail="Couldn't send that message.")
-    return _lounge_row_to_message(response.data[0], user.id)
+    saved = response.data[0]
+    by_id = {saved["id"]: saved}
+    if parent:
+        by_id[parent["id"]] = parent
+    return _lounge_row_to_message(saved, user.id, supabase, by_id)
 
 
 @app.delete("/lounge/messages/{message_id}", status_code=204)
@@ -2178,12 +2358,16 @@ def delete_lounge_message(message_id: str, user: CurrentUser):
     try:
         existing = (
             supabase.table("community_messages")
-            .select("id, user_id")
+            .select("id, user_id, image_path")
             .eq("id", message_id)
             .limit(1)
             .execute()
         )
     except Exception as exc:
+        if _needs_lounge_image_migration(exc):
+            raise HTTPException(
+                status_code=503, detail=LOUNGE_IMAGE_SETUP_HINT
+            ) from exc
         if _is_missing_lounge_table(exc):
             raise HTTPException(status_code=503, detail=LOUNGE_SETUP_HINT) from exc
         raise
@@ -2195,6 +2379,7 @@ def delete_lounge_message(message_id: str, user: CurrentUser):
     supabase.table("community_messages").delete().eq("id", message_id).eq(
         "user_id", user.id
     ).execute()
+    _lounge_remove_image(supabase, row.get("image_path"))
     return None
 
 

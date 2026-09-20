@@ -543,6 +543,10 @@ export type LoungeMessage = {
   body: string;
   created_at: string;
   is_mine: boolean;
+  image_url?: string | null;
+  reply_to_id?: string | null;
+  reply_to_label?: string | null;
+  reply_to_preview?: string | null;
 };
 
 async function loungeError(res: Response, fallback: string): Promise<string> {
@@ -560,10 +564,21 @@ export async function fetchLoungeMessages(): Promise<LoungeMessage[]> {
   return res.json();
 }
 
-export async function postLoungeMessage(body: string): Promise<LoungeMessage> {
+export async function postLoungeMessage(input: {
+  body: string;
+  reply_to_id?: string | null;
+  image_base64?: string | null;
+  image_mime?: string | null;
+}): Promise<LoungeMessage> {
   const res = await apiFetch("/lounge/messages", {
     method: "POST",
-    body: JSON.stringify({ body, room_id: "lounge" }),
+    body: JSON.stringify({
+      body: input.body,
+      room_id: "lounge",
+      reply_to_id: input.reply_to_id ?? null,
+      image_base64: input.image_base64 ?? null,
+      image_mime: input.image_mime ?? null,
+    }),
   });
   if (!res.ok) {
     throw new Error(await loungeError(res, `Couldn't send message (${res.status})`));

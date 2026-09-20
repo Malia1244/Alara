@@ -259,7 +259,7 @@ export default function Home() {
               Lounge
             </p>
             <p className="mt-0.5 text-sm text-muted">
-              Talk with every Alara student in one shared room.
+              Post a photo of an assignment and get help from other students.
             </p>
           </div>
           <span className="shrink-0 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">
