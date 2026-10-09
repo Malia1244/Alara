@@ -15,19 +15,27 @@ type ShopLike = {
 /** Survives remounts; avoids SSR default → cache flash. */
 let memoryLookSrc: string | null = null;
 
+function migrateLookSrc(raw: string): string {
+  if (
+    raw.includes("look-lavender-soft.webp") ||
+    raw.includes("look-pastel-beret") ||
+    raw.includes("look-floral-dress")
+  ) {
+    return DEFAULT_LOOK_SRC;
+  }
+  // All shop looks are transparent PNGs now.
+  if (raw.includes("/outfits/looks/") && /\.jpg$/i.test(raw)) {
+    return raw.replace(/\.jpg$/i, ".png");
+  }
+  return raw;
+}
+
 export function readCachedLookSrc(): string | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw || !raw.startsWith("/outfits/")) return null;
-    if (
-      raw.includes("look-lavender-soft.webp") ||
-      raw.includes("look-pastel-beret") ||
-      raw.includes("look-floral-dress")
-    ) {
-      return DEFAULT_LOOK_SRC;
-    }
-    return raw;
+    return migrateLookSrc(raw);
   } catch {
     return null;
   }
@@ -36,6 +44,7 @@ export function readCachedLookSrc(): string | null {
 /** Current look for every Ara avatar. Memory first, then localStorage, then OG. */
 export function getActiveLookSrc(): string {
   if (memoryLookSrc && memoryLookSrc.startsWith("/outfits/")) {
+    memoryLookSrc = migrateLookSrc(memoryLookSrc);
     return memoryLookSrc;
   }
   const cached = readCachedLookSrc();
