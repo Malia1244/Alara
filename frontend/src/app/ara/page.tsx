@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import CharacterStage from "@/components/CharacterStage";
+import { CutFlower } from "@/components/CutFlowers";
 import NoticeBanner from "@/components/NoticeBanner";
 import {
   equipShopItem,
@@ -88,8 +89,9 @@ export default function AraPage() {
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
               Character
             </p>
-            <h1 className="font-display text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
+            <h1 className="flex items-center gap-2 font-display text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
               Dressing room
+              <CutFlower kind="swirlPink" size={34} rotate={12} />
             </h1>
             <p className="mt-1 max-w-md text-sm leading-relaxed text-muted">
               Wear one complete named look — hair, top, bottoms, and shoes.

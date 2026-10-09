@@ -4,6 +4,7 @@ import { FormEvent, Suspense, useEffect, useMemo, useRef, useState } from "react
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import CharacterStage from "@/components/CharacterStage";
+import { CutFlower } from "@/components/CutFlowers";
 import { IconTeach } from "@/components/nav-icons";
 import type { AraPose } from "@/lib/araPoses";
 import {
@@ -382,8 +383,9 @@ function TeachAraInner() {
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
               Study mode
             </p>
-            <h1 className="mt-1 font-display text-3xl font-semibold tracking-tight text-ink">
+            <h1 className="mt-1 flex items-center gap-2 font-display text-3xl font-semibold tracking-tight text-ink">
               Teach Ara
+              <CutFlower kind="daisy" size={34} rotate={10} />
             </h1>
             <p className="mt-1 max-w-lg text-sm leading-relaxed text-muted">
               Type — or turn on Voice study and talk it out. Ara listens, asks

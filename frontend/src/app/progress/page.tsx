@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import CharacterStage from "@/components/CharacterStage";
+import { CutFlower } from "@/components/CutFlowers";
 import { useAraPrefs } from "@/components/AraPrefsProvider";
 import AraPrefsControls from "@/components/AraPrefsControls";
 import { fetchProgress, apiUnreachableMessage, type ProgressStats } from "@/lib/api";
@@ -55,8 +56,9 @@ export default function ProgressPage() {
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
                 Progress
               </p>
-              <h1 className="font-display text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
+              <h1 className="flex items-center gap-2 font-display text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
                 Your progress
+                <CutFlower kind="petal" size={34} rotate={8} />
               </h1>
               <p className="mt-2 max-w-md text-sm leading-relaxed text-muted">
                 Quiz misses feed review topics — later quizzes lean on those weak

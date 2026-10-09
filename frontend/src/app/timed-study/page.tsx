@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import CharacterStage from "@/components/CharacterStage";
+import { CutFlower } from "@/components/CutFlowers";
 import StudyAmbienceStage from "@/components/StudyAmbienceStage";
 import { IconTimer } from "@/components/nav-icons";
 import { getSharedAmbientPlayer } from "@/lib/ambientAudio";
@@ -341,8 +342,9 @@ export default function TimedStudyPage() {
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-brand">
                 Focus
               </p>
-              <h1 className="mt-1 font-display text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
+              <h1 className="mt-1 flex items-center gap-2 font-display text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
                 Timed study
+                <CutFlower kind="swirlBlue" size={34} rotate={-10} />
               </h1>
               <p className="mt-1 max-w-lg text-sm leading-relaxed text-muted">
                 Step into a study scene — café, beach, rain, library, and more —

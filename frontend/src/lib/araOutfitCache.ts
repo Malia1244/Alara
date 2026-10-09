@@ -55,7 +55,9 @@ export function getActiveLookSrc(): string {
 export function writeCachedLookSrc(src: string | null) {
   if (typeof window === "undefined") return;
   const next =
-    src && src.startsWith("/outfits/") ? src : DEFAULT_LOOK_SRC;
+    src && src.startsWith("/outfits/")
+      ? migrateLookSrc(src)
+      : DEFAULT_LOOK_SRC;
   const prev = getActiveLookSrc();
   memoryLookSrc = next;
   try {
@@ -83,14 +85,18 @@ export function lookSrcFromShop(shop: ShopLike): string {
   const byId = Object.fromEntries(shop.items.map((item) => [item.id, item]));
   const outfitId = shop.equipped.outfit;
   const outfit = outfitId ? byId[outfitId] : null;
-  if (outfit?.fullImage) return `/outfits/${outfit.fullImage}`;
+  if (outfit?.fullImage) {
+    return migrateLookSrc(`/outfits/${outfit.fullImage}`);
+  }
   // Equipped id present but catalog row missing — keep current look, don't snap to OG.
   if (outfitId) return getActiveLookSrc();
 
   for (const id of Object.values(shop.equipped)) {
     if (!id) continue;
     const item = byId[id];
-    if (item?.fullImage) return `/outfits/${item.fullImage}`;
+    if (item?.fullImage) {
+      return migrateLookSrc(`/outfits/${item.fullImage}`);
+    }
   }
   return DEFAULT_LOOK_SRC;
 }

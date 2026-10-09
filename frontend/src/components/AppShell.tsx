@@ -10,6 +10,8 @@ import { AraPrefsProvider } from "@/components/AraPrefsProvider";
 import ApiWakeBanner from "@/components/ApiWakeBanner";
 import StudyReminderBanner from "@/components/StudyReminderBanner";
 import AchievementSplash from "@/components/AchievementSplash";
+import OnboardingTutorial from "@/components/OnboardingTutorial";
+import SiteFlowerDecor from "@/components/SiteFlowerDecor";
 import StudyMusicBridge from "@/components/StudyMusicBridge";
 import StudySessionBar from "@/components/StudySessionBar";
 import {
@@ -51,14 +53,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <AraLookProvider>
           <ApiWakeBanner />
           {!isPublic && <StudyReminderBanner />}
+          {!isPublic && <OnboardingTutorial />}
           {!isPublic && <AchievementSplash />}
           <div
             className={
               isPublic
-                ? "relative z-10 flex min-h-full flex-1 flex-col"
-                : "relative z-10 flex min-h-full flex-1 flex-col pb-28 md:pb-0 md:pl-64"
+                ? "relative z-10 flex min-h-full flex-1 flex-col overflow-visible"
+                : "relative z-10 flex min-h-full flex-1 flex-col overflow-visible pb-28 md:pb-0 md:pl-64"
             }
           >
+            {!isPublic && <SiteFlowerDecor />}
             {!isPublic && <StudyMusicBridge />}
             {!isPublic && <Sidebar />}
             {!isPublic && <StudySessionBar />}

@@ -27,7 +27,7 @@ export default function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-border/80 bg-surface/90 backdrop-blur-xl md:hidden">
+    <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-border/70 bg-surface/90 shadow-[0_-12px_36px_-20px_rgba(180,100,130,0.35)] backdrop-blur-xl md:hidden">
       <div className="mx-auto w-full max-w-3xl">
         <AccountMenu variant="bar" />
       </div>
@@ -42,10 +42,10 @@ export default function BottomNav() {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-xl px-1 py-1.5 text-[10px] font-semibold transition-colors sm:min-w-[4.5rem] sm:px-3 sm:text-[11px] ${
+              className={`flex min-w-0 flex-1 flex-col items-center gap-0.5 px-1 py-1.5 text-[10px] font-semibold transition-all sm:min-w-[4.5rem] sm:px-3 sm:text-[11px] ${
                 isActive
-                  ? "bg-brand-soft text-brand-ink"
-                  : "text-muted hover:text-ink"
+                  ? "rounded-2xl border border-[#c5d4e2]/70 bg-[#e8f0f7] text-brand-ink shadow-[0_8px_18px_-10px_rgba(120,145,170,0.4)]"
+                  : "rounded-2xl text-muted hover:bg-panel hover:text-ink"
               }`}
             >
               <item.Icon className="h-5 w-5" />

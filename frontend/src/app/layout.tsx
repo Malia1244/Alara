@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Fraunces, Outfit } from "next/font/google";
+import { Fraunces, Quicksand } from "next/font/google";
 import AppShell from "@/components/AppShell";
 import { AuthProvider } from "@/components/AuthProvider";
 import "./globals.css";
@@ -9,14 +9,15 @@ const fraunces = Fraunces({
   subsets: ["latin"],
 });
 
-const outfit = Outfit({
+const quicksand = Quicksand({
   variable: "--font-outfit",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
   title: "Alara",
-  description: "A focused study workspace with Ara",
+  description: "A soft study space with Ara",
 };
 
 export default function RootLayout({
@@ -27,7 +28,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${fraunces.variable} ${outfit.variable} h-full antialiased`}
+      className={`${fraunces.variable} ${quicksand.variable} h-full antialiased`}
     >
       <body className="app-backdrop relative flex min-h-full flex-col overflow-x-hidden text-foreground">
         <AuthProvider>

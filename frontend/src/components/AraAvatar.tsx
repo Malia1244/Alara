@@ -46,9 +46,14 @@ export default function AraAvatar({
     setShopLookSrc(syncLookFromShop(shop));
   }, [shop]);
 
-  const baseSrc =
+  const preferred =
     shopLookSrc || look.lookSrc || getActiveLookSrc() || DEFAULT_LOOK_SRC;
+  const [src, setSrc] = useState(preferred);
   const ready = look.ready || Boolean(shopLookSrc);
+
+  useLayoutEffect(() => {
+    setSrc(preferred);
+  }, [preferred]);
 
   const motionClass =
     motionEnabled && motion === "idle"
@@ -70,7 +75,7 @@ export default function AraAvatar({
       }}
     >
       <Image
-        src={baseSrc}
+        src={src}
         alt="Ara, your study companion"
         fill
         priority={priority}
@@ -78,6 +83,9 @@ export default function AraAvatar({
         className="relative z-[1] bg-transparent object-contain"
         style={{ backgroundColor: "transparent" }}
         unoptimized
+        onError={() => {
+          if (src !== DEFAULT_LOOK_SRC) setSrc(DEFAULT_LOOK_SRC);
+        }}
       />
     </div>
   );

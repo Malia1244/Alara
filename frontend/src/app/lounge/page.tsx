@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import CharacterStage from "@/components/CharacterStage";
+import { CutFlower } from "@/components/CutFlowers";
 import { IconLounge } from "@/components/nav-icons";
 import {
   apiUnreachableMessage,
@@ -301,8 +302,9 @@ export default function LoungePage() {
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
               Everyone
             </p>
-            <h1 className="mt-1 font-display text-3xl font-semibold tracking-tight text-ink">
+            <h1 className="mt-1 flex items-center gap-2 font-display text-3xl font-semibold tracking-tight text-ink">
               Lounge
+              <CutFlower kind="hibiscusBlue" size={36} rotate={-8} />
             </h1>
             <p className="mt-1 max-w-lg text-sm leading-relaxed text-muted">
               Stuck on an assignment? Post a photo of the problem and ask how to

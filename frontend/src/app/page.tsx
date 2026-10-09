@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 import CharacterStage from "@/components/CharacterStage";
+import { CutFlower } from "@/components/CutFlowers";
 import { useAraPrefs } from "@/components/AraPrefsProvider";
 import AraPrefsControls from "@/components/AraPrefsControls";
 import DiscordInviteLink from "@/components/DiscordInviteLink";
@@ -23,32 +24,32 @@ const ACCENTS = [
     badgeText: "text-brand-ink",
     bar: "bg-brand",
     barTrack: "bg-brand-soft",
-    label: "text-brand",
+    label: "text-brand-ink",
     strip: "bg-brand",
   },
   {
-    badgeBg: "bg-sky-100",
+    badgeBg: "bg-accent-soft",
+    badgeText: "text-brand-ink",
+    bar: "bg-accent",
+    barTrack: "bg-accent-soft",
+    label: "text-brand-ink",
+    strip: "bg-accent",
+  },
+  {
+    badgeBg: "bg-[#e8f2e9]",
     badgeText: "text-sky",
     bar: "bg-sky",
-    barTrack: "bg-sky-100",
+    barTrack: "bg-[#e8f2e9]",
     label: "text-sky",
     strip: "bg-sky",
   },
   {
-    badgeBg: "bg-amber-100",
+    badgeBg: "bg-amber-50",
     badgeText: "text-amber-800",
     bar: "bg-amber",
     barTrack: "bg-amber-100",
     label: "text-amber",
     strip: "bg-amber",
-  },
-  {
-    badgeBg: "bg-accent-soft",
-    badgeText: "text-accent",
-    bar: "bg-accent",
-    barTrack: "bg-accent-soft",
-    label: "text-accent",
-    strip: "bg-accent",
   },
 ];
 
@@ -88,7 +89,7 @@ function testProgress(subject: Subject): number | null {
 }
 
 const inputClass =
-  "w-full rounded-xl border border-border bg-white px-4 py-2.5 text-sm text-ink outline-none transition-[border-color,box-shadow] placeholder:text-stone-400 focus:border-brand focus:shadow-[0_0_0_3px_rgba(15,107,92,0.12)]";
+  "w-full rounded-full border border-border bg-white px-5 py-2.5 text-sm text-ink outline-none transition-[border-color,box-shadow] placeholder:text-stone-400 shadow-[0_8px_22px_-16px_rgba(140,100,115,0.28)] focus:border-brand focus:shadow-[0_0_0_3px_rgba(201,160,171,0.28)]";
 
 export default function Home() {
   const { prefs } = useAraPrefs();
@@ -191,32 +192,50 @@ export default function Home() {
   );
 
   return (
-    <div className="flex flex-1 justify-center px-4 py-10 sm:px-8 sm:py-14">
-      <main className="flex w-full max-w-4xl flex-col gap-8">
-        <header className="animate-rise flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <div className="flex min-w-0 flex-1 flex-col gap-5 sm:flex-row sm:items-end">
+    <div className="relative flex flex-1 justify-center overflow-visible px-4 py-10 sm:px-8 sm:py-14">
+      <main className="relative z-[1] flex w-full max-w-4xl flex-col gap-8 overflow-visible">
+        <header className="animate-rise bloom-banner relative z-0 flex flex-col gap-6 p-6 sm:p-8 lg:flex-row lg:items-center lg:justify-between">
+          <div className="relative z-[1] flex min-w-0 flex-1 flex-col gap-5 sm:flex-row sm:items-center">
             <CharacterStage
-              size={104}
+              size={112}
               pose={araPose}
               priority
               pad="md"
             />
-            <div className="min-w-0 pb-1">
-              <h1 className="font-display text-4xl font-semibold tracking-tight text-ink sm:text-5xl">
+            <div className="min-w-0">
+              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-sky">
+                Soft study space
+              </p>
+              <h1 className="mt-1 flex items-center gap-2 font-display text-4xl font-semibold tracking-tight text-ink sm:text-5xl">
                 Alara
+                <CutFlower kind="bud" size={44} rotate={10} />
               </h1>
               <p className="mt-2 max-w-md text-base leading-relaxed text-muted">
                 {showTip
                   ? "Quiz patterns suggest a review focus. Open a subject to practice."
-                  : "Simple study space — notes, quizzes, and Ara."}
+                  : "Notes, quizzes, and Ara — a gentle place to learn."}
               </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Link
+                  href="/timed-study"
+                  className="bloom-pill px-4 py-2 text-sm font-semibold transition hover:brightness-[1.02]"
+                >
+                  Start focus
+                </Link>
+                <Link
+                  href="/shop"
+                  className="rounded-full border border-[#c5d4e2]/80 bg-white/70 px-4 py-2 text-sm font-semibold text-brand-ink backdrop-blur-sm transition hover:bg-white"
+                >
+                  Dress Ara
+                </Link>
+              </div>
             </div>
           </div>
 
-          <div className="relative w-full sm:w-64">
+          <div className="relative z-[1] w-full sm:w-64">
             <svg
               viewBox="0 0 24 24"
-              className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
+              className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-brand"
               fill="none"
               aria-hidden
             >
@@ -228,7 +247,7 @@ export default function Home() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search subjects"
-              className={`${inputClass} pl-10`}
+              className={`${inputClass} pl-11`}
             />
           </div>
         </header>
@@ -246,7 +265,7 @@ export default function Home() {
 
         <Link
           href="/lounge"
-          className="interactive-tile flex items-center justify-between gap-4 rounded-2xl border border-border bg-surface px-5 py-4"
+          className="interactive-tile flex items-center justify-between gap-4 border border-border bg-surface px-5 py-4"
         >
           <div>
             <p className="font-display text-lg font-semibold text-ink">Lounge</p>
@@ -254,14 +273,14 @@ export default function Home() {
               Share assignments and get help from other students.
             </p>
           </div>
-          <span className="shrink-0 rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white">
+          <span className="bloom-pill shrink-0 px-4 py-2 text-sm font-semibold">
             Open
           </span>
         </Link>
 
         <Link
           href="/timed-study"
-          className="interactive-tile flex items-center justify-between gap-4 rounded-2xl border border-border bg-surface px-5 py-4"
+          className="interactive-tile flex items-center justify-between gap-4 border border-border bg-surface px-5 py-4"
         >
           <div>
             <p className="font-display text-lg font-semibold text-ink">
@@ -271,7 +290,7 @@ export default function Home() {
               Set a timer and goals — Ara keeps you on track.
             </p>
           </div>
-          <span className="shrink-0 rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white">
+          <span className="bloom-pill shrink-0 px-4 py-2 text-sm font-semibold">
             Start
           </span>
         </Link>
@@ -279,7 +298,7 @@ export default function Home() {
         {upcomingTestSubject && (
           <Link
             href={`/subjects/${upcomingTestSubject.id}`}
-            className="animate-rise-delay interactive-tile group flex flex-col gap-4 overflow-hidden rounded-2xl border border-brand/30 bg-gradient-to-br from-brand to-sky p-6 text-white sm:flex-row sm:items-center sm:justify-between"
+            className="animate-rise-delay bloom-banner group flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between"
           >
             <div className="flex items-center gap-4">
               <CharacterStage
@@ -289,19 +308,19 @@ export default function Home() {
                 className="border-white/25 bg-white/15"
               />
               <div className="flex flex-col gap-1">
-                <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/80">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky">
                   Upcoming test
                 </span>
-                <p className="font-display text-2xl font-semibold leading-tight">
+                <p className="font-display text-2xl font-semibold leading-tight text-ink">
                   {upcomingTestSubject.name}
                 </p>
-                <p className="text-sm text-white/90">
+                <p className="text-sm text-muted">
                   {countdownLabel(upcomingTestSubject.days_until_test)} ·{" "}
                   {upcomingTestSubject.unit}
                 </p>
               </div>
             </div>
-            <span className="self-start rounded-lg bg-white px-5 py-2.5 text-sm font-semibold text-brand-ink transition-colors group-hover:bg-brand-soft sm:self-center">
+            <span className="bloom-pill self-start px-5 py-2.5 text-sm font-semibold sm:self-center">
               Open subject
             </span>
           </Link>
@@ -314,7 +333,8 @@ export default function Home() {
         )}
 
         {!isLoading && subjects.length === 0 && !error && !isAdding && (
-          <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-border bg-surface px-6 py-14 text-center">
+          <div className="bloom-card flex flex-col items-center gap-2 border-dashed px-6 py-14 text-center">
+            <CutFlower kind="daisy" size={48} rotate={-6} />
             <p className="font-display text-xl font-semibold text-ink">
               No subjects yet
             </p>
@@ -340,14 +360,14 @@ export default function Home() {
             return (
               <div
                 key={subject.id}
-                className="interactive-tile group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-surface"
+                className="interactive-tile group relative flex flex-col overflow-hidden border border-border bg-surface"
               >
                 <button
                   type="button"
                   onClick={() => handleDeleteSubject(subject)}
                   disabled={deletingId === subject.id}
                   aria-label={`Remove ${subject.name}`}
-                  className="absolute right-3 top-3 z-10 rounded-md border border-border bg-surface px-2 py-1 text-[11px] font-semibold text-muted transition-colors hover:border-accent/40 hover:bg-accent-soft hover:text-accent disabled:opacity-50"
+                  className="absolute right-3 top-3 z-10 rounded-full border border-border bg-surface px-2.5 py-1 text-[11px] font-semibold text-muted transition-colors hover:border-brand/40 hover:bg-brand-soft hover:text-brand-ink disabled:opacity-50"
                 >
                   {deletingId === subject.id ? "…" : "Remove"}
                 </button>
@@ -356,7 +376,7 @@ export default function Home() {
                   <div className="flex flex-col gap-3 p-5">
                     <div className="flex items-center gap-3">
                       <div
-                        className={`flex h-10 w-10 items-center justify-center rounded-lg text-sm font-bold ${accent.badgeBg} ${accent.badgeText}`}
+                        className={`flex h-10 w-10 items-center justify-center rounded-2xl text-sm font-bold ${accent.badgeBg} ${accent.badgeText}`}
                       >
                         {subject.name.charAt(0).toUpperCase()}
                       </div>
@@ -369,7 +389,7 @@ export default function Home() {
                     </div>
 
                     <span
-                      className={`w-fit rounded-md px-2 py-1 text-xs font-semibold ${accent.badgeBg} ${accent.badgeText}`}
+                      className={`w-fit rounded-full px-2.5 py-1 text-xs font-semibold ${accent.badgeBg} ${accent.badgeText}`}
                     >
                       {subject.unit}
                     </span>
@@ -403,7 +423,7 @@ export default function Home() {
                 <div className="px-5 pb-5">
                   <Link
                     href={`/subjects/${subject.id}/practice`}
-                    className="inline-flex rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-brand-ink"
+                    className="bloom-pill inline-flex px-3 py-1.5 text-xs font-semibold transition hover:brightness-105"
                   >
                     Practice
                   </Link>
@@ -480,7 +500,7 @@ export default function Home() {
               <button
                 type="submit"
                 disabled={isSaving}
-                className="animate-pop rounded-lg bg-brand px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-ink disabled:cursor-not-allowed disabled:opacity-50"
+                className="bloom-pill animate-pop px-6 py-2.5 text-sm font-semibold transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isSaving ? "Saving…" : "Add subject"}
               </button>
@@ -497,7 +517,7 @@ export default function Home() {
           <button
             type="button"
             onClick={() => setIsAdding(true)}
-            className="animate-pop mx-auto flex items-center gap-2 rounded-lg bg-brand px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-ink"
+            className="bloom-pill animate-pop mx-auto flex items-center gap-2 px-6 py-2.5 text-sm font-semibold transition hover:brightness-105"
           >
             <span className="text-base leading-none">+</span>
             Add subject

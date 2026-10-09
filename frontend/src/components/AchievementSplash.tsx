@@ -5,6 +5,11 @@ import CharacterStage from "@/components/CharacterStage";
 import { pickOpenAchievement, type Achievement } from "@/lib/achievements";
 import { readFocusMinutesTotal } from "@/lib/focusStats";
 import { fetchProgress } from "@/lib/api";
+import {
+  isTutorialPending,
+  isWelcomeSplashSkipped,
+  skipWelcomeSplashPermanently,
+} from "@/lib/onboarding";
 
 const SESSION_KEY = "alara-achievement-splash-shown";
 
@@ -19,6 +24,9 @@ export default function AchievementSplash({ enabled = true }: Props) {
   useEffect(() => {
     if (!enabled) return;
     if (typeof window === "undefined") return;
+    // New accounts see the onboarding tutorial first.
+    if (isTutorialPending()) return;
+    if (isWelcomeSplashSkipped()) return;
     try {
       if (window.sessionStorage.getItem(SESSION_KEY) === "1") return;
     } catch {
@@ -51,22 +59,38 @@ export default function AchievementSplash({ enabled = true }: Props) {
     };
   }, [enabled]);
 
+  function dismiss() {
+    setOpen(false);
+  }
+
+  function skipForever() {
+    skipWelcomeSplashPermanently();
+    setOpen(false);
+  }
+
   if (!open || !achievement) return null;
 
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center px-4">
       <button
         type="button"
-        aria-label="Dismiss achievement"
+        aria-label="Dismiss preview"
         className="absolute inset-0 bg-ink/45 backdrop-blur-[2px]"
-        onClick={() => setOpen(false)}
+        onClick={dismiss}
       />
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="achievement-title"
-        className="achievement-card relative z-[1] w-full max-w-md overflow-hidden rounded-[1.75rem] border border-border bg-surface px-6 pb-7 pt-8 text-center shadow-[0_30px_80px_-28px_rgba(16,32,28,0.55)]"
+        className="achievement-card bloom-card relative z-[1] w-full max-w-md overflow-visible px-6 pb-7 pt-8 text-center shadow-[0_30px_80px_-28px_rgba(180,100,130,0.45)]"
       >
+        <button
+          type="button"
+          onClick={dismiss}
+          className="absolute right-3 top-3 rounded-full px-2.5 py-1 text-xs font-semibold text-muted transition hover:bg-panel hover:text-ink"
+        >
+          Skip
+        </button>
         <div className="achievement-confetti" aria-hidden />
         <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-brand">
           Achievement unlocked
@@ -97,10 +121,17 @@ export default function AchievementSplash({ enabled = true }: Props) {
         </p>
         <button
           type="button"
-          onClick={() => setOpen(false)}
-          className="mt-6 w-full rounded-xl bg-brand px-4 py-3 text-sm font-semibold text-white transition hover:bg-brand-ink"
+          onClick={dismiss}
+          className="bloom-pill mt-6 w-full px-4 py-3 text-sm font-semibold transition hover:brightness-105"
         >
           Let’s study
+        </button>
+        <button
+          type="button"
+          onClick={skipForever}
+          className="mt-2 w-full rounded-xl px-4 py-2 text-sm font-medium text-muted transition hover:text-ink"
+        >
+          Don’t show this preview again
         </button>
       </div>
     </div>

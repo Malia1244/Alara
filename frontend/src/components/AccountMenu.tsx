@@ -31,16 +31,21 @@ export default function AccountMenu({ variant = "sidebar" }: Props) {
   }
 
   return (
-    <div className="rounded-xl border border-border bg-panel px-3.5 py-3">
-      <p className="truncate text-[11px] text-muted">{email}</p>
-      <button
-        type="button"
-        onClick={() => void signOut()}
-        className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-xs font-semibold text-brand-ink transition-colors hover:border-brand/40 hover:bg-brand-soft"
-      >
-        <IconLogout className="h-3.5 w-3.5" />
-        Log out
-      </button>
+    <div className="flex flex-col gap-2">
+      <div className="rounded-[1.25rem] border border-border bg-panel px-3.5 py-3 shadow-[0_8px_20px_-16px_rgba(180,100,130,0.35)]">
+        <p className="truncate text-[11px] text-muted">{email}</p>
+        <button
+          type="button"
+          onClick={() => void signOut()}
+          className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-full border border-border bg-surface px-3 py-2 text-xs font-semibold text-brand-ink transition-colors hover:border-brand/40 hover:bg-brand-soft"
+        >
+          <IconLogout className="h-3.5 w-3.5" />
+          Log out
+        </button>
+      </div>
+      <p className="px-1 text-center text-[10px] tracking-wide text-muted/70">
+        made by Malia
+      </p>
     </div>
   );
 }

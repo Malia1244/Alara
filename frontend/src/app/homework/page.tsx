@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useRef, useState } from "react";
 import CharacterStage from "@/components/CharacterStage";
+import { CutFlower } from "@/components/CutFlowers";
 import { IconHomework } from "@/components/nav-icons";
 import {
   sendHomeworkHelp,
@@ -131,8 +132,9 @@ export default function HomeworkHelpPage() {
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
               Study help
             </p>
-            <h1 className="mt-1 font-display text-3xl font-semibold tracking-tight text-ink">
+            <h1 className="mt-1 flex items-center gap-2 font-display text-3xl font-semibold tracking-tight text-ink">
               Homework Help
+              <CutFlower kind="lily" size={34} rotate={-6} />
             </h1>
             <p className="mt-1 max-w-lg text-sm leading-relaxed text-muted">
               Ask Ara a question — type it out or upload a photo of the problem.

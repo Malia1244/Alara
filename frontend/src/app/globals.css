@@ -1,20 +1,23 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f6f8f7;
-  --foreground: #0f1a17;
+  /* Soft white-pink base + quiet blue accents */
+  --background: #faf8f9;
+  --foreground: #3a2f33;
   --surface: #ffffff;
-  --muted: #5b6b66;
-  --border: #e2ebe7;
-  --brand: #0b7d68;
-  --brand-soft: #e8f6f1;
-  --brand-ink: #055544;
-  --accent: #d94836;
-  --accent-soft: #ffece8;
-  --sky: #2a6fad;
-  --amber: #c9851a;
-  --ink: #0f1a17;
-  --panel: #f3f7f5;
+  --muted: #8a7a80;
+  --border: #eadfe4;
+  --brand: #b7c9d8;
+  --brand-soft: #f5eef1;
+  --brand-ink: #5a6b7a;
+  --accent: #b87a88;
+  --accent-soft: #f3e8eb;
+  --sky: #9bb0c4;
+  --amber: #c9a882;
+  --ink: #3a2f33;
+  --panel: #f7f2f4;
+  --bloom-shadow: 0 14px 40px -18px rgba(120, 140, 160, 0.22);
+  --bloom-shadow-soft: 0 10px 28px -16px rgba(120, 140, 160, 0.18);
 }
 
 @theme inline {
@@ -40,17 +43,23 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
-  letter-spacing: -0.015em;
+  letter-spacing: -0.01em;
 }
 
 .font-display {
   font-family: var(--font-display), Georgia, serif;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.025em;
 }
 
-/* Soft modern wash — minimal noise, clear hierarchy */
+/* Soft bloom buttons when using brand fill */
+button.bg-brand,
+a.bg-brand {
+  box-shadow: 0 10px 22px -12px rgba(120, 145, 170, 0.35);
+}
+
+/* Soft blush cottage wash */
 .app-backdrop {
-  background: linear-gradient(180deg, #fafcfb 0%, #f6f8f7 48%, #f2f5f8 100%);
+  background: linear-gradient(165deg, #fffafc 0%, #faf6f8 42%, #f3f7f4 100%);
   min-height: 100%;
 }
 
@@ -60,7 +69,14 @@ body {
   inset: 0;
   pointer-events: none;
   z-index: 0;
-  opacity: 0;
+  opacity: 0.32;
+  background-image:
+    radial-gradient(circle at 12% 18%, rgba(201, 160, 171, 0.1) 0 18px, transparent 19px),
+    radial-gradient(circle at 88% 22%, rgba(135, 158, 138, 0.08) 0 14px, transparent 15px),
+    radial-gradient(circle at 70% 78%, rgba(201, 160, 171, 0.08) 0 16px, transparent 17px),
+    radial-gradient(circle at 22% 82%, rgba(180, 150, 160, 0.09) 0 12px, transparent 13px);
+  background-size: 160px 160px, 200px 200px, 180px 180px, 140px 140px;
+  mask-image: radial-gradient(ellipse 85% 70% at 50% 30%, #000 15%, transparent 78%);
 }
 
 .app-backdrop::after {
@@ -70,8 +86,10 @@ body {
   pointer-events: none;
   z-index: 0;
   background:
-    radial-gradient(640px 320px at 4% -12%, rgba(11, 125, 104, 0.14), transparent 60%),
-    radial-gradient(520px 280px at 100% 0%, rgba(42, 111, 173, 0.08), transparent 55%);
+    radial-gradient(720px 380px at 6% -10%, rgba(201, 160, 171, 0.14), transparent 58%),
+    radial-gradient(520px 300px at 92% 4%, rgba(155, 176, 196, 0.14), transparent 55%),
+    radial-gradient(420px 260px at 70% 18%, rgba(186, 210, 230, 0.12), transparent 50%),
+    radial-gradient(480px 280px at 50% 100%, rgba(245, 238, 241, 0.55), transparent 60%);
 }
 
 /* —— Full-app study scene palettes —— */
@@ -293,13 +311,62 @@ html[data-study-scene="focus"] .app-backdrop::after {
     border-color 0.2s ease,
     box-shadow 0.2s ease,
     background-color 0.2s ease;
-  box-shadow: 0 10px 28px -24px rgba(15, 26, 23, 0.4);
+  box-shadow: var(--bloom-shadow-soft);
+  border-radius: 1.35rem;
 }
 
 .interactive-tile:hover {
-  transform: translateY(-1px);
-  border-color: color-mix(in srgb, var(--brand) 35%, var(--border));
-  box-shadow: 0 14px 32px -22px rgba(15, 26, 23, 0.45);
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--brand) 40%, var(--border));
+  box-shadow: var(--bloom-shadow);
+}
+
+/* Soft white panels with quiet blue color bursts */
+.bloom-banner {
+  position: relative;
+  overflow: visible;
+  border-radius: 1.75rem;
+  border: 1px solid color-mix(in srgb, #c5d4e2 55%, white);
+  background:
+    radial-gradient(420px 220px at 12% 18%, rgba(170, 200, 230, 0.35), transparent 60%),
+    radial-gradient(360px 200px at 88% 22%, rgba(186, 214, 236, 0.28), transparent 58%),
+    radial-gradient(300px 180px at 62% 88%, rgba(155, 176, 196, 0.18), transparent 55%),
+    linear-gradient(145deg, #ffffff 0%, #fbfcfe 45%, #f4f7fb 100%);
+  color: var(--ink);
+  box-shadow: var(--bloom-shadow);
+}
+
+/* Decorative flowers sit above cards so they never get clipped behind panels */
+.cut-flower-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 25;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.bloom-card {
+  border-radius: 1.5rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--bloom-shadow-soft);
+}
+
+.bloom-pill {
+  border-radius: 999px;
+  background:
+    radial-gradient(120% 140% at 20% 20%, rgba(186, 214, 236, 0.55), transparent 55%),
+    linear-gradient(135deg, #f7fafc 0%, #e8f0f7 100%);
+  color: var(--brand-ink);
+  border: 1px solid color-mix(in srgb, #c5d4e2 60%, white);
+  box-shadow: 0 10px 24px -12px rgba(120, 145, 170, 0.35);
+}
+
+.bloom-input {
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--bloom-shadow-soft);
 }
 
 /* Character stage — soft pastel spotlight matching exact Ara look */
@@ -308,15 +375,15 @@ html[data-study-scene="focus"] .app-backdrop::after {
   display: inline-flex;
   align-items: flex-end;
   justify-content: center;
-  border-radius: 1.75rem;
+  border-radius: 2rem;
   border: 1px solid color-mix(in srgb, #f3c6d4 55%, var(--border));
   background:
-    radial-gradient(120% 90% at 50% 12%, rgba(255, 255, 255, 0.9), transparent 50%),
-    radial-gradient(100% 80% at 50% 100%, rgba(244, 170, 190, 0.22), transparent 55%),
+    radial-gradient(120% 90% at 50% 12%, rgba(255, 255, 255, 0.92), transparent 50%),
+    radial-gradient(100% 80% at 50% 100%, rgba(244, 170, 190, 0.28), transparent 55%),
     linear-gradient(180deg, #fff7f9 0%, #fde8ef 52%, #f7f0ea 100%);
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.95) inset,
-    0 16px 36px -20px rgba(180, 110, 130, 0.45);
+    var(--bloom-shadow);
   overflow: hidden;
 }
 
@@ -359,14 +426,14 @@ html[data-study-scene="focus"] .app-backdrop::after {
   filter: saturate(1.04) contrast(1.01);
 }
 
-/* Product callout — quiet edge accent */
+/* Product callout — soft bloom edge */
 .ara-callout {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-left: 3px solid var(--brand);
-  border-radius: 1rem;
+  border-left: 4px solid var(--brand);
+  border-radius: 1.35rem;
   max-width: min(36rem, calc(100vw - 2.5rem));
-  box-shadow: 0 8px 24px -20px rgba(15, 26, 23, 0.35);
+  box-shadow: var(--bloom-shadow-soft);
 }
 
 /* Ara soft idle bob — very gentle so she feels alive without shaking */
@@ -503,40 +570,40 @@ html[data-ui-theme="sleek"] body.app-backdrop::after {
 }
 
 html[data-ui-theme="playful"] {
-  --background: #fff7ed;
-  --foreground: #3b1d0f;
+  --background: #faf8f9;
+  --foreground: #3a2f33;
   --surface: #ffffff;
-  --muted: #9a6b4a;
-  --border: #fdba74;
-  --brand: #ea580c;
-  --brand-soft: #ffedd5;
-  --brand-ink: #9a3412;
-  --accent: #db2777;
-  --accent-soft: #fce7f3;
-  --sky: #0284c7;
-  --amber: #f59e0b;
-  --ink: #3b1d0f;
-  --panel: #fffbeb;
+  --muted: #8a7a80;
+  --border: #eadfe4;
+  --brand: #b7c9d8;
+  --brand-soft: #f5eef1;
+  --brand-ink: #5a6b7a;
+  --accent: #b87a88;
+  --accent-soft: #f3e8eb;
+  --sky: #9bb0c4;
+  --amber: #c9a882;
+  --ink: #3a2f33;
+  --panel: #f7f2f4;
 }
 
 html[data-ui-theme="playful"] body.app-backdrop {
-  background: linear-gradient(165deg, #fff7ed 0%, #fce7f3 48%, #e0f2fe 100%);
+  background: linear-gradient(165deg, #fffafc 0%, #f5eef1 48%, #eef3f8 100%);
 }
 
 html[data-ui-theme="playful"] body.app-backdrop::before {
   opacity: 0.28;
   background-image:
-    radial-gradient(circle at 20% 20%, rgba(234, 88, 12, 0.14) 0 18px, transparent 19px),
-    radial-gradient(circle at 70% 30%, rgba(219, 39, 119, 0.12) 0 14px, transparent 15px),
-    radial-gradient(circle at 40% 75%, rgba(2, 132, 199, 0.12) 0 16px, transparent 17px);
+    radial-gradient(circle at 20% 20%, rgba(201, 160, 171, 0.1) 0 18px, transparent 19px),
+    radial-gradient(circle at 70% 30%, rgba(155, 176, 196, 0.12) 0 14px, transparent 15px),
+    radial-gradient(circle at 40% 75%, rgba(186, 214, 236, 0.1) 0 16px, transparent 17px);
   background-size: 120px 120px, 160px 160px, 140px 140px;
   mask-image: none;
 }
 
 html[data-ui-theme="playful"] body.app-backdrop::after {
   background:
-    radial-gradient(560px 300px at 10% -5%, rgba(234, 88, 12, 0.22), transparent 58%),
-    radial-gradient(480px 260px at 95% 5%, rgba(219, 39, 119, 0.18), transparent 55%);
+    radial-gradient(560px 300px at 10% -5%, rgba(201, 160, 171, 0.14), transparent 58%),
+    radial-gradient(480px 260px at 95% 5%, rgba(155, 176, 196, 0.16), transparent 55%);
 }
 
 .ara-speech-bubble {
@@ -563,6 +630,27 @@ html[data-ui-theme="playful"] body.app-backdrop::after {
   }
 }
 
+/* Cut-flower sticker accents — gentle sway */
+@keyframes cut-flower-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(var(--flower-tilt, 0deg));
+  }
+  50% {
+    transform: translateY(-5px) rotate(var(--flower-tilt, 0deg));
+  }
+}
+
+.cut-flower-float {
+  animation: cut-flower-float 5.5s ease-in-out infinite;
+  will-change: transform;
+}
+
+.cut-flower-float-delay {
+  animation: cut-flower-float 6.2s ease-in-out 0.8s infinite;
+  will-change: transform;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ara-idle,
   .ara-react,
@@ -570,7 +658,9 @@ html[data-ui-theme="playful"] body.app-backdrop::after {
   .ara-speech-bubble,
   .animate-rise,
   .animate-rise-delay,
-  .achievement-confetti {
+  .achievement-confetti,
+  .cut-flower-float,
+  .cut-flower-float-delay {
     animation: none;
   }
 }

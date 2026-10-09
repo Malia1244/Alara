@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import CharacterStage from "@/components/CharacterStage";
+import { CutFlower } from "@/components/CutFlowers";
 import NoticeBanner from "@/components/NoticeBanner";
 import {
   equipShopItem,
@@ -100,20 +101,21 @@ export default function ShopPage() {
     <div className="flex flex-1 justify-center px-4 py-10 sm:px-8 sm:py-14">
       <NoticeBanner message={notice} onClose={() => setNotice(null)} />
       <main className="flex w-full max-w-4xl flex-col gap-7">
-        <header className="animate-rise flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <header className="animate-rise relative flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
               Outfit studio
             </p>
-            <h1 className="font-display text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
+            <h1 className="flex items-center gap-2 font-display text-3xl font-semibold tracking-tight text-brand-ink sm:text-4xl">
               Shop
+              <CutFlower kind="swirlPink" size={36} rotate={10} />
             </h1>
             <p className="mt-1 text-sm leading-relaxed text-muted">
               Buy looks for Ara and unlock app themes with points.
             </p>
           </div>
 
-          <div className="flex items-center gap-2 self-start rounded-2xl border border-border bg-surface px-4 py-2.5">
+          <div className="bloom-card relative flex items-center gap-2 self-start rounded-full px-4 py-2.5">
             <span className="text-xs font-semibold uppercase tracking-wide text-muted">
               Balance
             </span>
@@ -279,7 +281,7 @@ export default function ShopPage() {
                               type="button"
                               disabled={isBusy}
                               onClick={() => handleEquip(item.id)}
-                              className="rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-ink"
+                              className="bloom-pill px-3 py-1.5 text-xs font-semibold hover:brightness-105"
                             >
                               {isBusy ? "…" : "Wear"}
                             </button>
