@@ -28,18 +28,18 @@ export default function LoginPage() {
     <div className="flex flex-1 justify-center px-4 py-14">
       <main className="flex w-full max-w-md flex-col gap-6">
         <div className="flex flex-col items-center text-center">
-          <CharacterStage size={88} pose="wink" priority pad="md" />
-          <h1 className="mt-4 font-display text-3xl font-semibold text-ink">
-            Welcome back
+          <CharacterStage size={100} pose="wink" priority pad="md" />
+          <h1 className="mt-5 font-display text-3xl font-semibold text-ink">
+            Alara
           </h1>
-          <p className="mt-1 text-sm text-muted">
-            Sign in to access your notes, quizzes, and Ara outfits.
+          <p className="mt-1.5 text-sm text-muted">
+            Sign in to your notes, quizzes, and Ara.
           </p>
         </div>
 
         <form
           onSubmit={handleSubmit}
-          className="flex flex-col gap-4 rounded-2xl border border-border bg-surface p-7"
+          className="flex flex-col gap-4 rounded-2xl border border-border bg-surface p-7 shadow-[0_16px_40px_-28px_rgba(15,26,23,0.45)]"
         >
           <label className="flex flex-col gap-1.5 text-sm font-semibold text-ink">
             Email
@@ -66,7 +66,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={isSaving}
-            className="rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-ink disabled:opacity-50"
+            className="rounded-xl bg-brand px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-ink disabled:opacity-50"
           >
             {isSaving ? "Signing in…" : "Sign in"}
           </button>

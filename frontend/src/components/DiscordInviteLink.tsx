@@ -41,7 +41,7 @@ export default function DiscordInviteLink({ variant = "nav" }: Props) {
       href={url}
       target="_blank"
       rel="noopener noreferrer"
-      className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted transition-colors hover:bg-brand-soft hover:text-brand-ink"
+      className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted transition-colors hover:bg-panel hover:text-ink"
     >
       <IconDiscord className="h-4 w-4 opacity-90" />
       Discord

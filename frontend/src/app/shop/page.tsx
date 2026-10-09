@@ -105,23 +105,23 @@ export default function ShopPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2 self-start rounded-xl bg-ink px-4 py-2.5 text-white">
-            <span className="text-xs font-semibold uppercase tracking-wide text-white/55">
+          <div className="flex items-center gap-2 self-start rounded-2xl border border-border bg-surface px-4 py-2.5">
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted">
               Balance
             </span>
-            <span className="font-display text-sm font-semibold">
+            <span className="text-sm font-semibold text-brand-ink">
               {isLoading ? "…" : shop?.points ?? 0} pts
             </span>
           </div>
         </header>
 
-        <div className="animate-rise-delay flex items-center justify-center rounded-2xl border border-border bg-panel py-6">
-          <CharacterStage size={150} pose="wave" shop={shop} pad="md" />
+        <div className="animate-rise-delay flex items-center justify-center py-2">
+          <CharacterStage size={168} pose="wave" shop={shop} pad="lg" />
         </div>
 
-        <p className="rounded-xl border border-border bg-brand-soft/50 px-4 py-3 text-xs font-medium text-brand-ink">
-          Outfits dress Ara. Themes change the whole app look — unlock with
-          points, then switch in Ara options.
+        <p className="text-center text-xs text-muted">
+          Outfits dress Ara. Themes change the app look — unlock, then switch in
+          Ara options.
         </p>
 
         {error && <p className="text-center text-sm text-rose-600">{error}</p>}

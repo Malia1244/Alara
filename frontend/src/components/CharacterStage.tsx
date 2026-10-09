@@ -17,9 +17,9 @@ type Props = {
 };
 
 const PAD = {
-  sm: "p-2 pt-7",
-  md: "p-3 pt-8",
-  lg: "p-4 pt-9",
+  sm: "p-2.5 pt-8",
+  md: "p-3.5 pt-9",
+  lg: "p-5 pt-10",
 } as const;
 
 /**

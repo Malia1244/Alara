@@ -36,12 +36,12 @@ export default function SignupPage() {
     <div className="flex flex-1 justify-center px-4 py-14">
       <main className="flex w-full max-w-md flex-col gap-6">
         <div className="flex flex-col items-center text-center">
-          <CharacterStage size={88} pose="cheer" priority pad="md" />
-          <h1 className="mt-4 font-display text-3xl font-semibold text-ink">
-            Create your account
+          <CharacterStage size={100} pose="cheer" priority pad="md" />
+          <h1 className="mt-5 font-display text-3xl font-semibold text-ink">
+            Alara
           </h1>
-          <p className="mt-1 text-sm text-muted">
-            Your notes and quizzes stay private to you.
+          <p className="mt-1.5 text-sm text-muted">
+            Create an account — notes and quizzes stay private.
           </p>
         </div>
 

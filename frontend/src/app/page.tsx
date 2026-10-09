@@ -194,24 +194,21 @@ export default function Home() {
     <div className="flex flex-1 justify-center px-4 py-10 sm:px-8 sm:py-14">
       <main className="flex w-full max-w-4xl flex-col gap-8">
         <header className="animate-rise flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <div className="flex min-w-0 flex-1 flex-col gap-4 sm:flex-row sm:items-end">
+          <div className="flex min-w-0 flex-1 flex-col gap-5 sm:flex-row sm:items-end">
             <CharacterStage
-              size={88}
+              size={104}
               pose={araPose}
               priority
               pad="md"
             />
             <div className="min-w-0 pb-1">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-brand">
+              <h1 className="font-display text-4xl font-semibold tracking-tight text-ink sm:text-5xl">
                 Alara
-              </p>
-              <h1 className="mt-1 font-display text-4xl font-semibold tracking-tight text-ink sm:text-5xl">
-                Study workspace
               </h1>
-              <p className="mt-2 max-w-md text-sm leading-relaxed text-muted">
+              <p className="mt-2 max-w-md text-base leading-relaxed text-muted">
                 {showTip
                   ? "Quiz patterns suggest a review focus. Open a subject to practice."
-                  : "Track subjects, log what you studied, and quiz with Ara."}
+                  : "Simple study space — notes, quizzes, and Ara."}
               </p>
             </div>
           </div>
@@ -252,37 +249,29 @@ export default function Home() {
           className="interactive-tile flex items-center justify-between gap-4 rounded-2xl border border-border bg-surface px-5 py-4"
         >
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-brand">
-              Everyone
-            </p>
-            <p className="mt-1 font-display text-lg font-semibold text-ink">
-              Lounge
-            </p>
-            <p className="mt-0.5 text-sm text-muted">
-              Post a photo of an assignment and get help from other students.
+            <p className="font-display text-lg font-semibold text-ink">Lounge</p>
+            <p className="mt-1 text-sm text-muted">
+              Share assignments and get help from other students.
             </p>
           </div>
-          <span className="shrink-0 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">
+          <span className="shrink-0 rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white">
             Open
           </span>
         </Link>
 
         <Link
           href="/timed-study"
-          className="interactive-tile flex items-center justify-between gap-4 rounded-2xl border border-brand/25 bg-brand-soft/70 px-5 py-4"
+          className="interactive-tile flex items-center justify-between gap-4 rounded-2xl border border-border bg-surface px-5 py-4"
         >
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-brand">
-              Focus mode
+            <p className="font-display text-lg font-semibold text-ink">
+              Timed study
             </p>
-            <p className="mt-1 font-display text-lg font-semibold text-ink">
-              Timed study session
-            </p>
-            <p className="mt-0.5 text-sm text-muted">
+            <p className="mt-1 text-sm text-muted">
               Set a timer and goals — Ara keeps you on track.
             </p>
           </div>
-          <span className="shrink-0 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">
+          <span className="shrink-0 rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white">
             Start
           </span>
         </Link>
