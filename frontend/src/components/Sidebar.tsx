@@ -7,7 +7,6 @@ import AccountMenu from "@/components/AccountMenu";
 import AraPrefsControls from "@/components/AraPrefsControls";
 import DiscordInviteLink from "@/components/DiscordInviteLink";
 import { fetchShopState } from "@/lib/api";
-import { syncLookFromShop } from "@/lib/araOutfitCache";
 import {
   IconCloset,
   IconHome,
@@ -40,7 +39,7 @@ export default function Sidebar() {
       .then((data) => {
         if (cancelled) return;
         setPoints(data.points);
-        syncLookFromShop(data);
+        // Outfit sync is owned by AraLookProvider — don't fight it here.
       })
       .catch(() => {});
     return () => {

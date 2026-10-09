@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import Sidebar from "@/components/Sidebar";
 import AuthGate from "@/components/AuthGate";
+import { AraLookProvider } from "@/components/AraLookProvider";
 import { AraPrefsProvider } from "@/components/AraPrefsProvider";
 import ApiWakeBanner from "@/components/ApiWakeBanner";
 import StudyReminderBanner from "@/components/StudyReminderBanner";
@@ -47,22 +48,24 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <AuthGate>
       <AraPrefsProvider>
-        <ApiWakeBanner />
-        {!isPublic && <StudyReminderBanner />}
-        {!isPublic && <AchievementSplash />}
-        <div
-          className={
-            isPublic
-              ? "relative z-10 flex min-h-full flex-1 flex-col"
-              : "relative z-10 flex min-h-full flex-1 flex-col pb-28 md:pb-0 md:pl-64"
-          }
-        >
-          {!isPublic && <StudyMusicBridge />}
-          {!isPublic && <Sidebar />}
-          {!isPublic && <StudySessionBar />}
-          {children}
-          {!isPublic && <BottomNav />}
-        </div>
+        <AraLookProvider>
+          <ApiWakeBanner />
+          {!isPublic && <StudyReminderBanner />}
+          {!isPublic && <AchievementSplash />}
+          <div
+            className={
+              isPublic
+                ? "relative z-10 flex min-h-full flex-1 flex-col"
+                : "relative z-10 flex min-h-full flex-1 flex-col pb-28 md:pb-0 md:pl-64"
+            }
+          >
+            {!isPublic && <StudyMusicBridge />}
+            {!isPublic && <Sidebar />}
+            {!isPublic && <StudySessionBar />}
+            {children}
+            {!isPublic && <BottomNav />}
+          </div>
+        </AraLookProvider>
       </AraPrefsProvider>
     </AuthGate>
   );

@@ -1,4 +1,4 @@
-/** Shared equipped look — every Ara on the site reads/writes this. */
+/** Shared equipped look — one in-memory source of truth for the whole app. */
 
 const STORAGE_KEY = "alara-equipped-look-src";
 const CHANGE_EVENT = "alara-outfit-changed";
@@ -12,12 +12,14 @@ type ShopLike = {
   items: { id: string; slot: string; fullImage: string | null }[];
 };
 
+/** Survives remounts; avoids SSR default → cache flash. */
+let memoryLookSrc: string | null = null;
+
 export function readCachedLookSrc(): string | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw || !raw.startsWith("/outfits/")) return null;
-    // Migrate older default looks to OG floral cottage PNG.
     if (
       raw.includes("look-lavender-soft.webp") ||
       raw.includes("look-pastel-beret") ||
@@ -31,17 +33,24 @@ export function readCachedLookSrc(): string | null {
   }
 }
 
+/** Current look for every Ara avatar. Memory first, then localStorage, then OG. */
+export function getActiveLookSrc(): string {
+  if (memoryLookSrc && memoryLookSrc.startsWith("/outfits/")) {
+    return memoryLookSrc;
+  }
+  const cached = readCachedLookSrc();
+  memoryLookSrc = cached || DEFAULT_LOOK_SRC;
+  return memoryLookSrc;
+}
+
 export function writeCachedLookSrc(src: string | null) {
   if (typeof window === "undefined") return;
   const next =
     src && src.startsWith("/outfits/") ? src : DEFAULT_LOOK_SRC;
-  const prev = readCachedLookSrc() || DEFAULT_LOOK_SRC;
+  const prev = getActiveLookSrc();
+  memoryLookSrc = next;
   try {
-    if (!src || !src.startsWith("/outfits/")) {
-      window.localStorage.setItem(STORAGE_KEY, DEFAULT_LOOK_SRC);
-    } else {
-      window.localStorage.setItem(STORAGE_KEY, src);
-    }
+    window.localStorage.setItem(STORAGE_KEY, next);
   } catch {
     // Ignore quota / private mode.
   }
@@ -51,7 +60,14 @@ export function writeCachedLookSrc(src: string | null) {
 }
 
 export function clearCachedLookSrc() {
-  writeCachedLookSrc(null);
+  memoryLookSrc = null;
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    // ignore
+  }
+  notifyLookChanged(DEFAULT_LOOK_SRC);
 }
 
 export function lookSrcFromShop(shop: ShopLike): string {
@@ -59,6 +75,8 @@ export function lookSrcFromShop(shop: ShopLike): string {
   const outfitId = shop.equipped.outfit;
   const outfit = outfitId ? byId[outfitId] : null;
   if (outfit?.fullImage) return `/outfits/${outfit.fullImage}`;
+  // Equipped id present but catalog row missing — keep current look, don't snap to OG.
+  if (outfitId) return getActiveLookSrc();
 
   for (const id of Object.values(shop.equipped)) {
     if (!id) continue;
@@ -72,7 +90,7 @@ export function lookSrcFromShop(shop: ShopLike): string {
 export function syncLookFromShop(shop: ShopLike): string {
   const src = lookSrcFromShop(shop);
   writeCachedLookSrc(src);
-  return src;
+  return getActiveLookSrc();
 }
 
 function notifyLookChanged(src: string) {
@@ -89,7 +107,7 @@ export function subscribeLookSrc(
   if (typeof window === "undefined") return () => {};
   const handler = (event: Event) => {
     const detail = (event as CustomEvent<{ src: string }>).detail;
-    listener(detail?.src || readCachedLookSrc() || DEFAULT_LOOK_SRC);
+    listener(detail?.src || getActiveLookSrc());
   };
   window.addEventListener(CHANGE_EVENT, handler);
   return () => window.removeEventListener(CHANGE_EVENT, handler);
