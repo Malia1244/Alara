@@ -103,12 +103,12 @@ FREE_STARTER_ITEM_IDS = ["look-lavender-soft"]
 SHOP_CATALOG = [
     {
         "id": "look-lavender-soft",
-        "name": "Lavender Soft Day",
-        "emoji": "💜",
-        "fullImage": "looks/look-lavender-soft.webp",
+        "name": "Pastel Beret Cozy",
+        "emoji": "🎀",
+        "fullImage": "looks/look-pastel-beret.jpg",
         "price": 0,
         "slot": "outfit",
-        "pieces": "Classic Pigtails · Lavender heart hoodie · Ruffle lavender shorts · Heart Mary Janes",
+        "pieces": "Silver-lavender bob · Pink beret & earmuffs · Cream knit + pink vest · Pink skirt · Mary Janes",
     },
     {
         "id": "look-lavender-denim",

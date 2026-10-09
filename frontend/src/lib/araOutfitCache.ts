@@ -2,17 +2,23 @@
 
 const STORAGE_KEY = "alara-equipped-look-src";
 
-/** Classic free starter look (Lavender Soft Day). Keep in sync with backend CLASSIC_OUTFIT_ID. */
-export const DEFAULT_LOOK_SRC = "/outfits/looks/look-lavender-soft.webp";
+/** Exact pastel beret Ara. Keep in sync with backend CLASSIC_OUTFIT_ID art. */
+export const DEFAULT_LOOK_SRC = "/outfits/looks/look-pastel-beret.jpg";
 
 export function readCachedLookSrc(): string | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw || !raw.startsWith("/outfits/")) return null;
-    // Looks were compressed from PNG → WebP; rewrite old cache entries.
+    // Migrate old classic lavender cache to the exact pastel Ara look.
+    if (raw.includes("look-lavender-soft")) {
+      return DEFAULT_LOOK_SRC;
+    }
+    // Looks were compressed from PNG → WebP; rewrite old cache entries only.
     if (raw.includes("/outfits/looks/") && raw.endsWith(".png")) {
-      return raw.replace(/\.png$/, ".webp");
+      const asWebp = raw.replace(/\.png$/, ".webp");
+      if (asWebp.includes("look-lavender-soft")) return DEFAULT_LOOK_SRC;
+      return asWebp;
     }
     return raw;
   } catch {
@@ -51,6 +57,6 @@ export function lookSrcFromShop(shop: {
     const item = byId[id];
     if (item?.fullImage) return `/outfits/${item.fullImage}`;
   }
-  // New accounts / empty equip → classic starter look, not bare pose art.
+  // New accounts / empty equip → exact pastel Ara look.
   return DEFAULT_LOOK_SRC;
 }

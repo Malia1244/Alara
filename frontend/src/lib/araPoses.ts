@@ -9,14 +9,17 @@ export type AraPose =
   | "sitClarify"
   | "sitUnderstood";
 
+/** Exact pastel Ara reference look — used for every pose until pose variants exist. */
+export const ARA_EXACT_SRC = "/ara/ara-exact.jpg";
+
 export const ARA_POSE_SRC: Record<AraPose, string> = {
-  wave: "/ara-mascot-v2.png",
-  cheer: "/ara/cheer.png",
-  think: "/ara/think.png",
-  encourage: "/ara/encourage.png",
-  wink: "/ara/wink.png",
-  proud: "/ara/proud.png",
-  sitConfused: "/ara/sit-confused.png",
-  sitClarify: "/ara/sit-clarify.png",
-  sitUnderstood: "/ara/sit-understood.png",
+  wave: ARA_EXACT_SRC,
+  cheer: ARA_EXACT_SRC,
+  think: ARA_EXACT_SRC,
+  encourage: ARA_EXACT_SRC,
+  wink: ARA_EXACT_SRC,
+  proud: ARA_EXACT_SRC,
+  sitConfused: ARA_EXACT_SRC,
+  sitClarify: ARA_EXACT_SRC,
+  sitUnderstood: ARA_EXACT_SRC,
 };
