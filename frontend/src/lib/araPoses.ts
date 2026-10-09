@@ -9,8 +9,8 @@ export type AraPose =
   | "sitClarify"
   | "sitUnderstood";
 
-/** Exact pastel Ara reference look — used for every pose until pose variants exist. */
-export const ARA_EXACT_SRC = "/ara/ara-exact.jpg";
+/** OG Ara mascot (floral cottage) as PNG. */
+export const ARA_EXACT_SRC = "/ara/ara-exact.png";
 
 export const ARA_POSE_SRC: Record<AraPose, string> = {
   wave: ARA_EXACT_SRC,

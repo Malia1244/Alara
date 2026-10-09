@@ -105,11 +105,11 @@ SHOP_CATALOG = [
     {
         "id": "look-lavender-soft",
         "name": "OG Ara",
-        "emoji": "🎀",
-        "fullImage": "looks/look-pastel-beret.jpg",
+        "emoji": "🌼",
+        "fullImage": "looks/look-floral-cottage.png",
         "price": 0,
         "slot": "outfit",
-        "pieces": "Original mascot · Pink beret & earmuffs · Cream knit + pink vest · Lace pink skirt · Mary Janes",
+        "pieces": "Original mascot · Floral cottage dress · White socks · Brown loafers",
     },
     {
         "id": "look-cat-hoodie",
@@ -164,15 +164,6 @@ SHOP_CATALOG = [
         "price": 100,
         "slot": "outfit",
         "pieces": "White cami · Bear print pants · Bear slippers",
-    },
-    {
-        "id": "look-floral-dress",
-        "name": "Floral Cottage",
-        "emoji": "🌼",
-        "fullImage": "looks/look-floral-dress.jpg",
-        "price": 105,
-        "slot": "outfit",
-        "pieces": "Floral cream dress · White socks · Brown loafers",
     },
     {
         "id": "look-red-preppy",
