@@ -85,7 +85,15 @@ export default function ShopPage() {
     }
   }
 
-  const outfits = (shop?.items ?? []).filter((item) => item.slot === "outfit");
+  const outfits = (shop?.items ?? [])
+    .filter((item) => item.slot === "outfit")
+    .slice()
+    .sort((a, b) => {
+      // OG Ara (free starter) always first.
+      if (FREE_STARTER_IDS.has(a.id) && !FREE_STARTER_IDS.has(b.id)) return -1;
+      if (!FREE_STARTER_IDS.has(a.id) && FREE_STARTER_IDS.has(b.id)) return 1;
+      return a.price - b.price || a.name.localeCompare(b.name);
+    });
   const themes = (shop?.items ?? []).filter((item) => item.slot === "theme");
 
   return (

@@ -2,8 +2,9 @@
 
 const STORAGE_KEY = "alara-equipped-look-src";
 
-/** Exact pastel beret Ara. Keep in sync with backend CLASSIC_OUTFIT_ID art. */
+/** OG Ara mascot (cute beret dress girl). Keep in sync with backend CLASSIC art. */
 export const DEFAULT_LOOK_SRC = "/outfits/looks/look-pastel-beret.jpg";
+export const OG_OUTFIT_ID = "look-lavender-soft";
 
 export function readCachedLookSrc(): string | null {
   if (typeof window === "undefined") return null;

@@ -104,12 +104,12 @@ FREE_STARTER_ITEM_IDS = ["look-lavender-soft"]
 SHOP_CATALOG = [
     {
         "id": "look-lavender-soft",
-        "name": "Pastel Beret Cozy",
+        "name": "OG Ara",
         "emoji": "🎀",
         "fullImage": "looks/look-pastel-beret.jpg",
         "price": 0,
         "slot": "outfit",
-        "pieces": "Pink beret & earmuffs · Cream knit + pink vest · Pink skirt · Mary Janes",
+        "pieces": "Original mascot · Pink beret & earmuffs · Cream knit + pink vest · Lace pink skirt · Mary Janes",
     },
     {
         "id": "look-cat-hoodie",
