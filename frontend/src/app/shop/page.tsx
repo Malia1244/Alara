@@ -246,13 +246,22 @@ export default function ShopPage() {
                       <p className="font-display text-base font-semibold text-ink">
                         {item.name}
                       </p>
+                      {FREE_STARTER_IDS.has(item.id) && (
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-brand">
+                          Original mascot
+                        </p>
+                      )}
                       {item.pieces && (
                         <p className="text-[11px] leading-snug text-muted">
                           {item.pieces}
                         </p>
                       )}
                       <p className="text-xs text-muted">
-                        {item.price === 0 ? "Free" : `${item.price} pts`}
+                        {FREE_STARTER_IDS.has(item.id)
+                          ? "OG · Free"
+                          : item.price === 0
+                            ? "Free"
+                            : `${item.price} pts`}
                       </p>
                       <div className="mt-auto pt-1">
                         {isOwned ? (
