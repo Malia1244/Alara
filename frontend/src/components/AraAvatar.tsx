@@ -8,9 +8,11 @@ import {
   DEFAULT_LOOK_SRC,
   lookSrcFromShop,
   readCachedLookSrc,
+  subscribeLookSrc,
+  syncLookFromShop,
   writeCachedLookSrc,
 } from "@/lib/araOutfitCache";
-import { ARA_POSE_SRC, type AraPose } from "@/lib/araPoses";
+import type { AraPose } from "@/lib/araPoses";
 
 type OverlayPos = {
   top: string;
@@ -142,8 +144,8 @@ function applyShopState(data: ShopState) {
   const itemsById = Object.fromEntries(
     data.items.map((item) => [item.id, item])
   );
-  writeCachedLookSrc(lookSrcFromShop(data));
-  return { equippedIds, itemsById };
+  syncLookFromShop(data);
+  return { equippedIds, itemsById, lookSrc: lookSrcFromShop(data) };
 }
 
 export default function AraAvatar({
@@ -161,9 +163,8 @@ export default function AraAvatar({
   const [itemsById, setItemsById] = useState<Record<string, ShopItem>>({});
   const [cachedLookSrc, setCachedLookSrc] = useState<string | null>(null);
   const [outfitReady, setOutfitReady] = useState(!showOutfits);
-  const [srcIndex, setSrcIndex] = useState(0);
 
-  // Apply last-worn look before paint so home doesn't flash default purple Ara.
+  // Apply last-worn look before paint so every page shows the same outfit.
   useLayoutEffect(() => {
     if (!showOutfits) {
       setOutfitReady(true);
@@ -173,7 +174,7 @@ export default function AraAvatar({
       const applied = applyShopState(shop);
       setEquippedIds(applied.equippedIds);
       setItemsById(applied.itemsById);
-      setCachedLookSrc(lookSrcFromShop(shop));
+      setCachedLookSrc(applied.lookSrc);
       setOutfitReady(true);
       return;
     }
@@ -181,7 +182,6 @@ export default function AraAvatar({
     if (cached) {
       setCachedLookSrc(cached);
     } else {
-      // Brand-new browsers: seed the classic starter look immediately.
       setCachedLookSrc(DEFAULT_LOOK_SRC);
       writeCachedLookSrc(DEFAULT_LOOK_SRC);
     }
@@ -199,15 +199,23 @@ export default function AraAvatar({
         const applied = applyShopState(data);
         setEquippedIds(applied.equippedIds);
         setItemsById(applied.itemsById);
-        setCachedLookSrc(lookSrcFromShop(data));
+        setCachedLookSrc(applied.lookSrc);
       })
       .catch(() => {
-        // Not worth showing an error just for the dress-up overlays.
+        // Keep cached / default look if shop is unreachable.
       });
     return () => {
       cancelled = true;
     };
   }, [showOutfits, shop]);
+
+  // Stay in sync when another page/component equips a different look.
+  useEffect(() => {
+    if (!showOutfits) return;
+    return subscribeLookSrc((src) => {
+      setCachedLookSrc(src);
+    });
+  }, [showOutfits]);
 
   const equippedItems = showOutfits
     ? equippedIds.map((id) => itemsById[id]).filter(Boolean)
@@ -226,19 +234,11 @@ export default function AraAvatar({
     ? `/outfits/${lookItem.fullImage}`
     : null;
 
-  const srcCandidates: string[] = [];
-  if (liveLookSrc) {
-    srcCandidates.push(liveLookSrc);
-  } else if (showOutfits) {
-    // New users / loading: classic starter look, never bare purple pose first.
-    srcCandidates.push(cachedLookSrc || DEFAULT_LOOK_SRC);
-  }
-  srcCandidates.push(ARA_POSE_SRC[pose]);
-
-  const candidateKey = srcCandidates.join("|");
-  useEffect(() => {
-    setSrcIndex(0);
-  }, [candidateKey]);
+  // Always keep the selected outfit — never swap to a different pose portrait.
+  const lookSrc =
+    (showOutfits
+      ? liveLookSrc || cachedLookSrc || DEFAULT_LOOK_SRC
+      : cachedLookSrc || DEFAULT_LOOK_SRC) || DEFAULT_LOOK_SRC;
 
   const motionClass =
     motionEnabled && motion === "idle"
@@ -249,8 +249,7 @@ export default function AraAvatar({
           ? "ara-dance"
           : "";
 
-  const safeIndex = Math.min(srcIndex, srcCandidates.length - 1);
-  const baseSrc = srcCandidates[safeIndex] ?? ARA_POSE_SRC[pose];
+  const baseSrc = lookSrc;
 
   const stickerItems = showOutfits
     ? equippedIds
@@ -304,7 +303,10 @@ export default function AraAvatar({
         className="relative z-[1] bg-transparent object-contain"
         style={{ backgroundColor: "transparent" }}
         onError={() => {
-          setSrcIndex((i) => (i + 1 < srcCandidates.length ? i + 1 : i));
+          // Keep OG look if a shop image fails — never swap to a different outfit.
+          if (baseSrc !== DEFAULT_LOOK_SRC) {
+            setCachedLookSrc(DEFAULT_LOOK_SRC);
+          }
         }}
       />
 

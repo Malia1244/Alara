@@ -1,3 +1,5 @@
+import { DEFAULT_LOOK_SRC } from "@/lib/araOutfitCache";
+
 export type AraPose =
   | "wave"
   | "cheer"
@@ -9,17 +11,20 @@ export type AraPose =
   | "sitClarify"
   | "sitUnderstood";
 
-/** OG Ara mascot (floral cottage) as PNG. */
-export const ARA_EXACT_SRC = "/ara/ara-exact.png";
+/**
+ * Pose ids still exist for API compatibility, but every pose uses the
+ * currently selected outfit portrait (via AraAvatar), falling back to OG.
+ */
+export const ARA_EXACT_SRC = DEFAULT_LOOK_SRC;
 
 export const ARA_POSE_SRC: Record<AraPose, string> = {
-  wave: ARA_EXACT_SRC,
-  cheer: ARA_EXACT_SRC,
-  think: ARA_EXACT_SRC,
-  encourage: ARA_EXACT_SRC,
-  wink: ARA_EXACT_SRC,
-  proud: ARA_EXACT_SRC,
-  sitConfused: ARA_EXACT_SRC,
-  sitClarify: ARA_EXACT_SRC,
-  sitUnderstood: ARA_EXACT_SRC,
+  wave: DEFAULT_LOOK_SRC,
+  cheer: DEFAULT_LOOK_SRC,
+  think: DEFAULT_LOOK_SRC,
+  encourage: DEFAULT_LOOK_SRC,
+  wink: DEFAULT_LOOK_SRC,
+  proud: DEFAULT_LOOK_SRC,
+  sitConfused: DEFAULT_LOOK_SRC,
+  sitClarify: DEFAULT_LOOK_SRC,
+  sitUnderstood: DEFAULT_LOOK_SRC,
 };

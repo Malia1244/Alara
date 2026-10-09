@@ -1,3 +1,4 @@
+import { syncLookFromShop } from "@/lib/araOutfitCache";
 import { supabase } from "@/lib/supabase";
 
 export type Subject = {
@@ -418,10 +419,16 @@ export async function createPracticeDeck(
   return res.json();
 }
 
+async function shopStateFromResponse(res: Response): Promise<ShopState> {
+  const data = (await res.json()) as ShopState;
+  syncLookFromShop(data);
+  return data;
+}
+
 export async function fetchShopState(): Promise<ShopState> {
   const res = await apiFetch("/shop/state");
   if (!res.ok) throw new Error(`Failed to load shop (${res.status})`);
-  return res.json();
+  return shopStateFromResponse(res);
 }
 
 export async function purchaseShopItem(itemId: string): Promise<ShopState> {
@@ -433,7 +440,7 @@ export async function purchaseShopItem(itemId: string): Promise<ShopState> {
     const body = await res.json().catch(() => null);
     throw new Error(body?.detail ?? `Failed to buy item (${res.status})`);
   }
-  return res.json();
+  return shopStateFromResponse(res);
 }
 
 export async function equipShopItem(itemId: string): Promise<ShopState> {
@@ -445,7 +452,7 @@ export async function equipShopItem(itemId: string): Promise<ShopState> {
     const body = await res.json().catch(() => null);
     throw new Error(body?.detail ?? `Failed to equip item (${res.status})`);
   }
-  return res.json();
+  return shopStateFromResponse(res);
 }
 
 export async function unequipShopSlot(slot: string): Promise<ShopState> {
@@ -457,7 +464,7 @@ export async function unequipShopSlot(slot: string): Promise<ShopState> {
     const body = await res.json().catch(() => null);
     throw new Error(body?.detail ?? `Failed to unequip item (${res.status})`);
   }
-  return res.json();
+  return shopStateFromResponse(res);
 }
 
 export async function fetchTeachTopics(): Promise<TeachTopic[]> {
