@@ -12,35 +12,36 @@ export type TutorialStep = {
   cta?: string;
 };
 
+/** Short how-to: subjects → notes → quiz → why it helps. */
 export const TUTORIAL_STEPS: TutorialStep[] = [
   {
     id: "welcome",
-    title: "Welcome to Alara",
-    body: "I’m Ara. I’ll help you keep notes, quiz what you actually studied, and stay on track for tests.",
+    title: "Hi — I’m Ara",
+    body: "Alara helps you remember what you study. Add a class, log what you learned, then quiz it so it sticks.",
   },
   {
     id: "subjects",
-    title: "Add a subject",
-    body: "Start on Home — name a class, the unit you’re in, and optionally how many days until the test.",
+    title: "1. Add a subject",
+    body: "On Home, add a class (like Biology), the unit you’re in, and days until the test. That shows up on your calendar.",
     href: "/",
-    cta: "Go to Home",
+    cta: "Open Home",
   },
   {
-    id: "notes-quiz",
-    title: "Notes → quiz",
-    body: "Open a subject, paste what you learned, then take a quiz on that material. Points unlock looks in the Shop.",
+    id: "notes",
+    title: "2. Log what you learned",
+    body: "Open the subject and paste your notes or what you studied today. Short is fine — just get it in.",
   },
   {
-    id: "shop",
-    title: "Dress Ara",
-    body: "Earn points from quizzes and pick outfits in the Shop. Your look stays with you everywhere in Alara.",
-    href: "/shop",
-    cta: "Peek at Shop",
+    id: "quiz",
+    title: "3. Take a quiz",
+    body: "Quiz yourself on those notes. You earn points, review weak spots, and stay ready for the test.",
   },
   {
     id: "done",
-    title: "You’re set",
-    body: "Try Timed Study when you want a focus block, or Lounge to share homework with other students. You’ve got this.",
+    title: "That’s it",
+    body: "Subjects keep you organized. Notes capture learning. Quizzes lock it in. Check Calendar for upcoming tests.",
+    href: "/calendar",
+    cta: "See Calendar",
   },
 ];
 

@@ -264,6 +264,21 @@ export default function Home() {
         )}
 
         <Link
+          href="/calendar"
+          className="interactive-tile flex items-center justify-between gap-4 border border-border bg-surface px-5 py-4"
+        >
+          <div>
+            <p className="font-display text-lg font-semibold text-ink">Calendar</p>
+            <p className="mt-1 text-sm text-muted">
+              See test dates and what&apos;s coming up.
+            </p>
+          </div>
+          <span className="bloom-pill shrink-0 px-4 py-2 text-sm font-semibold">
+            Open
+          </span>
+        </Link>
+
+        <Link
           href="/lounge"
           className="interactive-tile flex items-center justify-between gap-4 border border-border bg-surface px-5 py-4"
         >

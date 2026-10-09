@@ -197,6 +197,31 @@ export function IconLogout({ className = "h-5 w-5" }: IconProps) {
   );
 }
 
+/** Calendar / test dates */
+export function IconCalendar({ className = "h-5 w-5" }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+      <path
+        d="M7 3.75v2.5M17 3.75v2.5"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+      <path
+        d="M5.75 6.75h12.5A1.25 1.25 0 0 1 19.5 8v11A1.25 1.25 0 0 1 18.25 20.25H5.75A1.25 1.25 0 0 1 4.5 19V8a1.25 1.25 0 0 1 1.25-1.25Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
+      <path
+        d="M4.5 10.25h15"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 /** Discord / community */
 export function IconDiscord({ className = "h-5 w-5" }: IconProps) {
   return (

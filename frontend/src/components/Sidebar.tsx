@@ -9,6 +9,7 @@ import CutFlowerScatter from "@/components/CutFlowers";
 import DiscordInviteLink from "@/components/DiscordInviteLink";
 import { fetchShopState } from "@/lib/api";
 import {
+  IconCalendar,
   IconCloset,
   IconHome,
   IconHomework,
@@ -21,6 +22,7 @@ import {
 
 const NAV_ITEMS = [
   { href: "/", label: "Home", Icon: IconHome },
+  { href: "/calendar", label: "Calendar", Icon: IconCalendar },
   { href: "/lounge", label: "Lounge", Icon: IconLounge },
   { href: "/timed-study", label: "Timed Study", Icon: IconTimer },
   { href: "/homework", label: "Homework", Icon: IconHomework },

@@ -4,22 +4,22 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import AccountMenu from "@/components/AccountMenu";
 import {
+  IconCalendar,
   IconHome,
   IconHomework,
   IconLounge,
   IconProgress,
   IconShop,
-  IconTeach,
   IconTimer,
 } from "@/components/nav-icons";
 
 const NAV_ITEMS = [
   { href: "/", label: "Home", Icon: IconHome },
+  { href: "/calendar", label: "Calendar", Icon: IconCalendar },
   { href: "/lounge", label: "Lounge", Icon: IconLounge },
   { href: "/timed-study", label: "Focus", Icon: IconTimer },
   { href: "/homework", label: "Help", Icon: IconHomework },
   { href: "/progress", label: "Stats", Icon: IconProgress },
-  { href: "/teach-ara", label: "Teach", Icon: IconTeach },
   { href: "/shop", label: "Shop", Icon: IconShop },
 ] as const;
 

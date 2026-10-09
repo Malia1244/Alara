@@ -29,6 +29,22 @@ const PAGE_ACCENTS: Record<string, Accent[]> = {
         "cut-flower-float-delay absolute bottom-36 left-4 opacity-80 md:left-[17.5rem]",
     },
   ],
+  "/calendar": [
+    {
+      kind: "daisy",
+      size: 50,
+      rotate: -8,
+      className:
+        "cut-flower-float absolute right-6 top-24 opacity-90 md:right-12",
+    },
+    {
+      kind: "sprig",
+      size: 44,
+      rotate: 12,
+      className:
+        "cut-flower-float-delay absolute bottom-40 left-5 opacity-80 md:left-[18rem]",
+    },
+  ],
   "/shop": [
     {
       kind: "lily",

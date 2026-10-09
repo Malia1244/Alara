@@ -93,10 +93,10 @@ export default function OnboardingTutorial() {
         </div>
 
         <div className="mt-6 flex flex-col gap-2">
-          {current.href && current.cta && !isLast ? (
+          {current.href && current.cta ? (
             <Link
               href={current.href}
-              onClick={next}
+              onClick={isLast ? finish : next}
               className="bloom-pill w-full px-4 py-3 text-sm font-semibold transition hover:brightness-105"
             >
               {current.cta}
