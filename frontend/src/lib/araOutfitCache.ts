@@ -33,16 +33,21 @@ export function readCachedLookSrc(): string | null {
 
 export function writeCachedLookSrc(src: string | null) {
   if (typeof window === "undefined") return;
+  const next =
+    src && src.startsWith("/outfits/") ? src : DEFAULT_LOOK_SRC;
+  const prev = readCachedLookSrc() || DEFAULT_LOOK_SRC;
   try {
     if (!src || !src.startsWith("/outfits/")) {
-      window.localStorage.removeItem(STORAGE_KEY);
+      window.localStorage.setItem(STORAGE_KEY, DEFAULT_LOOK_SRC);
     } else {
       window.localStorage.setItem(STORAGE_KEY, src);
     }
   } catch {
     // Ignore quota / private mode.
   }
-  notifyLookChanged(src && src.startsWith("/outfits/") ? src : DEFAULT_LOOK_SRC);
+  if (prev !== next) {
+    notifyLookChanged(next);
+  }
 }
 
 export function clearCachedLookSrc() {

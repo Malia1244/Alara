@@ -161,31 +161,27 @@ export default function AraAvatar({
   const motionEnabled = prefs.motion;
   const [equippedIds, setEquippedIds] = useState<string[]>([]);
   const [itemsById, setItemsById] = useState<Record<string, ShopItem>>({});
-  const [cachedLookSrc, setCachedLookSrc] = useState<string | null>(null);
-  const [outfitReady, setOutfitReady] = useState(!showOutfits);
+  // Seed from cache immediately so navigating pages never flashes a different look.
+  const [cachedLookSrc, setCachedLookSrc] = useState<string>(
+    () => readCachedLookSrc() || DEFAULT_LOOK_SRC
+  );
+  const [outfitReady, setOutfitReady] = useState(true);
 
-  // Apply last-worn look before paint so every page shows the same outfit.
+  // Apply parent shop / cache before paint. Display always follows cachedLookSrc.
   useLayoutEffect(() => {
-    if (!showOutfits) {
-      setOutfitReady(true);
-      return;
-    }
+    if (!showOutfits) return;
     if (shop) {
       const applied = applyShopState(shop);
       setEquippedIds(applied.equippedIds);
       setItemsById(applied.itemsById);
       setCachedLookSrc(applied.lookSrc);
-      setOutfitReady(true);
       return;
     }
-    const cached = readCachedLookSrc();
-    if (cached) {
-      setCachedLookSrc(cached);
-    } else {
-      setCachedLookSrc(DEFAULT_LOOK_SRC);
+    const cached = readCachedLookSrc() || DEFAULT_LOOK_SRC;
+    setCachedLookSrc(cached);
+    if (!readCachedLookSrc()) {
       writeCachedLookSrc(DEFAULT_LOOK_SRC);
     }
-    setOutfitReady(true);
   }, [showOutfits, shop]);
 
   useEffect(() => {
@@ -199,10 +195,13 @@ export default function AraAvatar({
         const applied = applyShopState(data);
         setEquippedIds(applied.equippedIds);
         setItemsById(applied.itemsById);
-        setCachedLookSrc(applied.lookSrc);
+        // Only change portrait when server look actually differs.
+        setCachedLookSrc((prev) =>
+          applied.lookSrc === prev ? prev : applied.lookSrc
+        );
       })
       .catch(() => {
-        // Keep cached / default look if shop is unreachable.
+        // Keep whatever look is already on screen.
       });
     return () => {
       cancelled = true;
@@ -213,7 +212,7 @@ export default function AraAvatar({
   useEffect(() => {
     if (!showOutfits) return;
     return subscribeLookSrc((src) => {
-      setCachedLookSrc(src);
+      setCachedLookSrc((prev) => (prev === src ? prev : src));
     });
   }, [showOutfits]);
 
@@ -230,15 +229,8 @@ export default function AraAvatar({
     equippedItems.find((item) => item?.slot === "head" && item.fullImage) ??
     null;
 
-  const liveLookSrc = lookItem?.fullImage
-    ? `/outfits/${lookItem.fullImage}`
-    : null;
-
-  // Always keep the selected outfit — never swap to a different pose portrait.
-  const lookSrc =
-    (showOutfits
-      ? liveLookSrc || cachedLookSrc || DEFAULT_LOOK_SRC
-      : cachedLookSrc || DEFAULT_LOOK_SRC) || DEFAULT_LOOK_SRC;
+  // Cached look is the single source of truth across the whole app.
+  const baseSrc = cachedLookSrc || DEFAULT_LOOK_SRC;
 
   const motionClass =
     motionEnabled && motion === "idle"
@@ -248,8 +240,6 @@ export default function AraAvatar({
         : motionEnabled && motion === "dance"
           ? "ara-dance"
           : "";
-
-  const baseSrc = lookSrc;
 
   const stickerItems = showOutfits
     ? equippedIds
@@ -303,10 +293,7 @@ export default function AraAvatar({
         className="relative z-[1] bg-transparent object-contain"
         style={{ backgroundColor: "transparent" }}
         onError={() => {
-          // Keep OG look if a shop image fails — never swap to a different outfit.
-          if (baseSrc !== DEFAULT_LOOK_SRC) {
-            setCachedLookSrc(DEFAULT_LOOK_SRC);
-          }
+          // Do not swap outfits on load errors — keeps Ara stable across pages.
         }}
       />
 

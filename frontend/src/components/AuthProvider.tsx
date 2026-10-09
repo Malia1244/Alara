@@ -44,11 +44,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     const { data: sub } = supabase.auth.onAuthStateChange((event, next) => {
+      // Only clear on sign-out — clearing on sign-in made Ara flash the default
+      // outfit on every session restore / navigation race.
       if (event === "SIGNED_OUT") {
-        clearCachedLookSrc();
-      }
-      // Switching accounts: drop previous look until this user's shop loads.
-      if (event === "SIGNED_IN") {
         clearCachedLookSrc();
       }
       setSession(next);
