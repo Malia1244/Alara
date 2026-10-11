@@ -552,7 +552,7 @@ def generate_flashcards(
     num_cards: int = 10,
     avoid_fronts: Optional[list[str]] = None,
 ) -> list[dict]:
-    """Make front/back study cards from the student's notes."""
+    """Make front/back study cards that practice the skill, not one example."""
     avoid_block = ""
     if avoid_fronts:
         listed = "\n".join(f"- {front}" for front in avoid_fronts[:40])
@@ -560,24 +560,82 @@ def generate_flashcards(
             "\nDo NOT repeat these prompts (make fresh ones):\n"
             f"{listed}\n"
         )
+
+    # Expand thin logs into a practice bank (same skill, many variants).
+    practice_source = expand_notes_for_quiz(subject, notes)
+
     prompt = (
-        f"You are helping a student practice {subject}.\n\n"
-        f"Notes:\n---\n{notes}\n---\n\n"
-        f"Create {num_cards} practice cards. Front = a short question or "
-        f"prompt (not a vocabulary word list). Back = a clear, short answer "
-        f"(1-2 sentences max). Age-appropriate for middle/high school. "
-        f"Cover the main ideas.{avoid_block}"
+        f"You are helping a student PRACTICE {subject} with match/flash cards.\n\n"
+        f"Study material / topic brief:\n---\n{practice_source}\n---\n\n"
+        f"Create {num_cards} practice cards for a matching game.\n"
+        f"Front = a short question or prompt. Back = a clear short answer "
+        f"(a few words or 1 short sentence).\n\n"
+        f"CRITICAL — VARIETY / TRANSFER:\n"
+        f"- Notes often include only 1–2 examples. Those are SAMPLES of the "
+        f"skill. Do NOT make every card a rephrase of the same example.\n"
+        f"- Invent NEW but SIMILAR practice items of the same type.\n"
+        f"- Math example: if notes say single-digit addition and \"1+1=2\", "
+        f"make OTHER single-digit sums "
+        f"(What is 2+3? → 5; What is 4+5? → 9; What is 7+1? → 8; "
+        f"What is 6+2? → 8; What is 3+4? → 7; What is 8+0? → 8…). "
+        f"Do NOT fill the deck with \"1+1\" worded 10 different ways.\n"
+        f"- Across the set, each front should be a DISTINCT problem/prompt. "
+        f"Do not repeat the same equation or same answer-target more than "
+        f"twice unless the skill truly has only that many items.\n"
+        f"- Stay inside the skill/topic they studied — don't jump to "
+        f"unrelated advanced material.\n"
+        f"- Never ask meta diary questions (what did you learn today?).\n"
+        f"- Age-appropriate for middle/high school (or younger if notes "
+        f"clearly are basic arithmetic).{avoid_block}"
     )
     parsed = _gemini_json(prompt, FLASHCARDS_SCHEMA)
     cards = []
+    seen_fronts: set[str] = set()
     for row in parsed.get("cards") or []:
         front = str(row.get("front", "")).strip()
         back = str(row.get("back", "")).strip()
-        if front and back:
-            cards.append({"front": front, "back": back})
+        key = front.lower()
+        if not front or not back or key in seen_fronts:
+            continue
+        seen_fronts.add(key)
+        cards.append({"front": front, "back": back})
     if not cards:
         raise QuizGenerationError("Gemini returned no usable flashcards")
-    return cards
+
+    # If the model still collapsed onto one example, ask once more for variants.
+    if len(cards) >= 3:
+        backs = [c["back"].strip().lower() for c in cards]
+        # Same short back repeating (e.g. all "2") is a smell for 1+1 spam.
+        most_common = max(set(backs), key=backs.count)
+        if backs.count(most_common) >= max(3, len(cards) // 2):
+            retry = (
+                f"Your previous cards overused the answer \"{most_common}\" "
+                f"and/or the same example. Using this material, make "
+                f"{num_cards} NEW practice cards with DISTINCT problems of "
+                f"the SAME skill (varied equations/prompts and varied "
+                f"correct answers when the skill allows).\n\n"
+                f"Material:\n---\n{practice_source}\n---\n"
+                f"Do not rephrase 1+1 repeatedly if the skill is broader "
+                f"single-digit addition.{avoid_block}"
+            )
+            try:
+                parsed_retry = _gemini_json(retry, FLASHCARDS_SCHEMA)
+                retry_cards = []
+                seen: set[str] = set()
+                for row in parsed_retry.get("cards") or []:
+                    front = str(row.get("front", "")).strip()
+                    back = str(row.get("back", "")).strip()
+                    key = front.lower()
+                    if not front or not back or key in seen:
+                        continue
+                    seen.add(key)
+                    retry_cards.append({"front": front, "back": back})
+                if len(retry_cards) >= len(cards):
+                    cards = retry_cards
+            except QuizGenerationError:
+                pass
+
+    return cards[:num_cards]
 
 
 def teach_ara_opener(

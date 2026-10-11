@@ -18,7 +18,7 @@ import {
   hasStudyNotes,
   isNoNewLearning,
 } from "@/lib/learning";
-import QuizPanel, { type QuizStatus } from "@/components/QuizPanel";
+import QuizPanel from "@/components/QuizPanel";
 import NotesExplainCard from "@/components/NotesExplainCard";
 import NotesInput from "@/components/NotesInput";
 import NoticeBanner from "@/components/NoticeBanner";
@@ -33,6 +33,22 @@ function formatDate(iso: string) {
   });
 }
 
+function formatDayTitle(iso: string) {
+  const d = new Date(iso);
+  const now = new Date();
+  const sameDay =
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate();
+  const label = d.toLocaleDateString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: d.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
+  });
+  return sameDay ? `Today · ${label}` : label;
+}
+
 function isToday(iso: string) {
   const d = new Date(iso);
   const now = new Date();
@@ -41,6 +57,12 @@ function isToday(iso: string) {
     d.getMonth() === now.getMonth() &&
     d.getDate() === now.getDate()
   );
+}
+
+function previewText(content: string) {
+  const text = displayLearningContent(content).replace(/\s+/g, " ").trim();
+  if (!text) return "Check-in";
+  return text.length > 90 ? `${text.slice(0, 90)}…` : text;
 }
 
 export default function SubjectPage() {
@@ -55,11 +77,8 @@ export default function SubjectPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Tracks today's quiz so we know when to reveal the rest of the page.
-  const [todaysQuizStatus, setTodaysQuizStatus] = useState<QuizStatus | null>(
-    null
-  );
   const [prizeMessage, setPrizeMessage] = useState<string | null>(null);
+  const [openEntryId, setOpenEntryId] = useState<string | null>(null);
 
   async function loadData() {
     try {
@@ -70,6 +89,11 @@ export default function SubjectPage() {
       ]);
       setSubject(subjectData);
       setEntries(entriesData);
+      setOpenEntryId((current) => {
+        if (current && entriesData.some((e) => e.id === current)) return current;
+        const today = entriesData.find((e) => isToday(e.created_at));
+        return today?.id ?? entriesData[0]?.id ?? null;
+      });
     } catch {
       setError(apiUnreachableMessage());
     } finally {
@@ -83,7 +107,6 @@ export default function SubjectPage() {
   }, [subjectId]);
 
   const todaysEntry = entries.find((e) => isToday(e.created_at)) ?? null;
-  const pastEntries = entries.filter((e) => e.id !== todaysEntry?.id);
   const hasPastStudyNotes = entries.some((e) => hasStudyNotes(e.content));
   const needsTestCheckIn =
     subject != null &&
@@ -271,88 +294,121 @@ export default function SubjectPage() {
           </form>
         )}
 
-        {todaysEntry && (
-          <section className="flex flex-col gap-4">
-            <div className="rounded-2xl border border-border bg-surface p-5">
-              <div className="flex items-center justify-between gap-2">
-                <span className="rounded-lg bg-brand-soft px-3 py-1 text-xs font-semibold text-brand">
-                  {isNoNewLearning(todaysEntry.content)
-                    ? "Today's check-in"
-                    : "Today's learning"}
-                </span>
-                <span className="text-xs text-muted">
-                  {formatDate(todaysEntry.created_at)}
-                </span>
-              </div>
-              <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-ink/80">
-                {displayLearningContent(todaysEntry.content)}
+        {entries.length > 0 && (
+          <section className="flex flex-col gap-3">
+            <div className="flex items-end justify-between gap-3">
+              <h2 className="text-sm font-semibold text-muted">Study log</h2>
+              <p className="text-[11px] text-muted">
+                Tap a day to see the notes and quiz
               </p>
-              {!isNoNewLearning(todaysEntry.content) && (
-                <div className="mt-4">
-                  <NotesExplainCard
-                    entryId={todaysEntry.id}
-                    content={todaysEntry.content}
-                    subjectName={todaysEntry.subject}
-                    unit={todaysEntry.unit}
-                    compact
-                  />
-                </div>
-              )}
             </div>
+            <ul className="flex flex-col gap-2">
+              {entries.map((entry) => {
+                const open = openEntryId === entry.id;
+                const today = isToday(entry.created_at);
+                return (
+                  <li
+                    key={entry.id}
+                    className={`overflow-hidden rounded-2xl border bg-surface transition-colors ${
+                      open
+                        ? "border-brand/40"
+                        : "border-border hover:border-brand/30"
+                    }`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setOpenEntryId((current) =>
+                          current === entry.id ? null : entry.id
+                        )
+                      }
+                      className="flex w-full items-start gap-3 px-4 py-3.5 text-left"
+                      aria-expanded={open}
+                    >
+                      <span
+                        className={`mt-0.5 text-sm text-muted transition ${
+                          open ? "rotate-90" : ""
+                        }`}
+                        aria-hidden
+                      >
+                        ▸
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="flex flex-wrap items-center gap-2">
+                          <span className="font-display text-base font-semibold text-ink">
+                            {formatDayTitle(entry.created_at)}
+                          </span>
+                          {today && (
+                            <span className="rounded-full bg-brand-soft px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-brand">
+                              Today
+                            </span>
+                          )}
+                          <span className="rounded-full bg-panel px-2 py-0.5 text-[10px] font-semibold text-muted">
+                            {isNoNewLearning(entry.content)
+                              ? "Check-in"
+                              : "Learning + quiz"}
+                          </span>
+                        </span>
+                        {!open && (
+                          <span className="mt-1 block truncate text-sm text-muted">
+                            {previewText(entry.content)}
+                          </span>
+                        )}
+                      </span>
+                      <span className="shrink-0 pt-0.5 text-[11px] text-muted">
+                        {formatDate(entry.created_at)}
+                      </span>
+                    </button>
 
-            <div className="rounded-2xl border border-border bg-surface p-5">
-              <div className="flex items-center justify-between gap-2">
-                <span className="rounded-lg bg-brand-soft px-3 py-1 text-xs font-semibold text-brand">
-                  Today&apos;s quiz
-                </span>
-                <span className="text-xs text-muted">
-                  {formatDate(todaysEntry.created_at)}
-                </span>
-              </div>
-              <QuizPanel
-                entryId={todaysEntry.id}
-                onStatusChange={setTodaysQuizStatus}
-              />
-            </div>
-          </section>
-        )}
+                    {open && (
+                      <div className="flex flex-col gap-3 border-t border-border px-4 pb-4 pt-3">
+                        <div className="rounded-2xl border border-border bg-panel/60 p-4">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="rounded-lg bg-brand-soft px-3 py-1 text-xs font-semibold text-brand">
+                              {isNoNewLearning(entry.content)
+                                ? today
+                                  ? "Today's check-in"
+                                  : "Check-in"
+                                : today
+                                  ? "Today's learning"
+                                  : "Learning log"}
+                            </span>
+                            <span className="text-xs text-muted">
+                              {formatDate(entry.created_at)}
+                            </span>
+                          </div>
+                          <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-ink/80">
+                            {displayLearningContent(entry.content)}
+                          </p>
+                          {hasStudyNotes(entry.content) && (
+                            <div className="mt-4">
+                              <NotesExplainCard
+                                entryId={entry.id}
+                                content={entry.content}
+                                subjectName={entry.subject}
+                                unit={entry.unit}
+                                compact
+                              />
+                            </div>
+                          )}
+                        </div>
 
-        {todaysQuizStatus === "completed" && pastEntries.length > 0 && (
-          <section className="flex flex-col gap-4">
-            <h2 className="text-sm font-semibold text-muted">
-              Past entries
-            </h2>
-            <ul className="flex flex-col gap-4">
-              {pastEntries.map((entry) => (
-                <li
-                  key={entry.id}
-                  className="rounded-2xl border border-border bg-surface p-5 transition-colors hover:border-brand/30"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="rounded-lg bg-brand-soft px-3 py-1 text-xs font-semibold text-brand">
-                      {entry.unit ?? entry.subject}
-                    </span>
-                    <span className="text-xs text-muted">
-                      {formatDate(entry.created_at)}
-                    </span>
-                  </div>
-                  <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-ink/75">
-                    {displayLearningContent(entry.content)}
-                  </p>
-                  {hasStudyNotes(entry.content) && (
-                    <div className="mt-3">
-                      <NotesExplainCard
-                        entryId={entry.id}
-                        content={entry.content}
-                        subjectName={entry.subject}
-                        unit={entry.unit}
-                        compact
-                      />
-                    </div>
-                  )}
-                  <QuizPanel entryId={entry.id} />
-                </li>
-              ))}
+                        <div className="rounded-2xl border border-border bg-panel/60 p-4">
+                          <div className="mb-2 flex items-center justify-between gap-2">
+                            <span className="rounded-lg bg-brand-soft px-3 py-1 text-xs font-semibold text-brand">
+                              {today ? "Today's quiz" : "Quiz"}
+                            </span>
+                            <span className="text-xs text-muted">
+                              {formatDate(entry.created_at)}
+                            </span>
+                          </div>
+                          <QuizPanel entryId={entry.id} />
+                        </div>
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           </section>
         )}
