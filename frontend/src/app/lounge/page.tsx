@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useAuth } from "@/components/AuthProvider";
 import CharacterStage from "@/components/CharacterStage";
 import { CutFlower } from "@/components/CutFlowers";
 import { IconLounge } from "@/components/nav-icons";
@@ -201,6 +202,7 @@ function Bubble({
 }
 
 export default function LoungePage() {
+  const { displayName, updateDisplayName } = useAuth();
   const [messages, setMessages] = useState<LoungeMessage[]>([]);
   const [draft, setDraft] = useState("");
   const [pendingImage, setPendingImage] = useState<PendingImage | null>(null);
@@ -208,9 +210,16 @@ export default function LoungePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [nameDraft, setNameDraft] = useState("");
+  const [nameBusy, setNameBusy] = useState(false);
+  const [nameMsg, setNameMsg] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const stickToBottom = useRef(true);
+
+  useEffect(() => {
+    setNameDraft(displayName);
+  }, [displayName]);
 
   const threads = useMemo(() => threadMessages(messages), [messages]);
 
@@ -320,6 +329,46 @@ export default function LoungePage() {
             <span className="font-semibold">Answer</span> on someone&apos;s post
             to help. For private step-by-step help from Ara, use Homework Help.
           </p>
+        </section>
+
+        <section className="bloom-card animate-rise flex flex-col gap-2 p-4 sm:flex-row sm:items-end sm:gap-3">
+          <label className="flex min-w-0 flex-1 flex-col gap-1.5 text-sm">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
+              Display name
+            </span>
+            <input
+              value={nameDraft}
+              onChange={(e) => setNameDraft(e.target.value.slice(0, 24))}
+              placeholder="What others see in the Lounge"
+              maxLength={24}
+              className="rounded-2xl border border-border bg-surface px-4 py-2.5 text-ink outline-none transition focus:border-brand"
+            />
+          </label>
+          <button
+            type="button"
+            disabled={nameBusy || nameDraft.trim() === displayName}
+            onClick={() => {
+              void (async () => {
+                setNameBusy(true);
+                setNameMsg(null);
+                const err = await updateDisplayName(nameDraft);
+                setNameBusy(false);
+                setNameMsg(err ?? "Saved — new posts will use this name.");
+              })();
+            }}
+            className="bloom-pill shrink-0 px-4 py-2.5 text-sm font-semibold disabled:opacity-50"
+          >
+            {nameBusy ? "Saving…" : "Save name"}
+          </button>
+          {nameMsg && (
+            <p
+              className={`text-xs sm:pb-2 ${
+                nameMsg.startsWith("Saved") ? "text-brand-ink" : "text-accent"
+              }`}
+            >
+              {nameMsg}
+            </p>
+          )}
         </section>
 
         <section className="animate-rise flex min-h-[28rem] flex-col rounded-2xl border border-border bg-surface">

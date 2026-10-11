@@ -11,58 +11,72 @@ import {
   getActiveLookSrc,
   syncLookFromShop,
 } from "@/lib/araOutfitCache";
-import type { AraPose } from "@/lib/araPoses";
+import {
+  araPoseSrc,
+  isOgLookSrc,
+  type AraPose,
+} from "@/lib/araPoses";
 
 type Props = {
   size: number;
   className?: string;
   priority?: boolean;
   showOutfits?: boolean;
-  /** Kept for call-site compatibility; outfit portrait does not change by pose. */
   pose?: AraPose;
   /** Soft idle bob / one-shot react bounce / celebration dance */
   motion?: "idle" | "react" | "dance" | "none";
   /** Live shop state from Shop/Outfit pages so equip updates instantly. */
   shop?: ShopState | null;
+  /** Force a specific portrait (e.g. login girl + boy pair). */
+  lookSrc?: string | null;
 };
 
 export default function AraAvatar({
   size,
   className = "",
   priority = false,
+  pose = "wave",
   motion = "idle",
   shop = null,
+  lookSrc = null,
 }: Props) {
   const { prefs } = useAraPrefs();
   const motionEnabled = prefs.motion;
   const gender = prefs.gender;
   const look = useAraLook();
-  // Local override only while a parent passes live shop (equip preview).
   const [shopLookSrc, setShopLookSrc] = useState<string | null>(null);
 
   useLayoutEffect(() => {
-    if (!shop) {
+    if (lookSrc || !shop) {
       setShopLookSrc(null);
       return;
     }
     setShopLookSrc(syncLookFromShop(shop, gender));
-  }, [shop, gender]);
+  }, [shop, gender, lookSrc]);
 
-  const preferred =
-    shopLookSrc || look.lookSrc || getActiveLookSrc() || defaultLookSrc(gender);
-  // If cached look is the other Ara's OG, snap to this gender's default.
-  const genderedPreferred =
-    gender === "boy" && preferred.endsWith("look-floral-cottage.png")
+  const activeLook =
+    lookSrc ||
+    shopLookSrc ||
+    look.lookSrc ||
+    getActiveLookSrc() ||
+    defaultLookSrc(gender);
+
+  // Custom shop outfits stay as full portraits; OG (or no outfit) uses pose sheets.
+  const usePoseSheet = !lookSrc && isOgLookSrc(activeLook);
+  const preferred = usePoseSheet
+    ? araPoseSrc(gender, pose)
+    : gender === "boy" && activeLook.endsWith("look-floral-cottage.png")
       ? defaultLookSrc("boy")
-      : gender === "girl" && preferred.endsWith("look-floral-cottage-boy.png")
+      : gender === "girl" && activeLook.endsWith("look-floral-cottage-boy.png")
         ? defaultLookSrc("girl")
-        : preferred;
-  const [src, setSrc] = useState(genderedPreferred);
-  const ready = look.ready || Boolean(shopLookSrc);
+        : activeLook;
+
+  const [src, setSrc] = useState(preferred);
+  const ready = Boolean(lookSrc) || look.ready || Boolean(shopLookSrc);
 
   useLayoutEffect(() => {
-    setSrc(genderedPreferred);
-  }, [genderedPreferred]);
+    setSrc(preferred);
+  }, [preferred]);
 
   const motionClass =
     motionEnabled && motion === "idle"
@@ -93,8 +107,10 @@ export default function AraAvatar({
         style={{ backgroundColor: "transparent" }}
         unoptimized
         onError={() => {
-          const fallback = defaultLookSrc(gender);
-          if (src !== fallback) setSrc(fallback);
+          const poseFallback = araPoseSrc(gender, "wave");
+          const og = defaultLookSrc(gender);
+          if (src !== poseFallback) setSrc(poseFallback);
+          else if (src !== og) setSrc(og);
           else if (src !== DEFAULT_LOOK_SRC) setSrc(DEFAULT_LOOK_SRC);
         }}
       />

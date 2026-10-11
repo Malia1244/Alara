@@ -14,6 +14,8 @@ type Props = {
   /** Extra padding around the character art */
   pad?: "sm" | "md" | "lg";
   shop?: ShopState | null;
+  /** Force a specific portrait (login girl/boy pair, etc.). */
+  lookSrc?: string | null;
 };
 
 const PAD = {
@@ -35,6 +37,7 @@ export default function CharacterStage({
   className = "",
   pad = "md",
   shop = null,
+  lookSrc = null,
 }: Props) {
   return (
     <div
@@ -49,6 +52,7 @@ export default function CharacterStage({
           motion={motion}
           priority={priority}
           shop={shop}
+          lookSrc={lookSrc}
         />
       </div>
     </div>

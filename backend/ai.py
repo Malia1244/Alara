@@ -203,7 +203,7 @@ def _notes_need_fact_expansion(notes: str) -> bool:
 
 def expand_notes_for_quiz(subject: str, notes: str) -> str:
     """
-    Turn thin/vague study logs into concrete facts the quiz can test.
+    Turn thin/vague study logs into a practice-ready topic brief.
     Falls back to the original notes if expansion fails.
     """
     text = (notes or "").strip()
@@ -211,16 +211,24 @@ def expand_notes_for_quiz(subject: str, notes: str) -> str:
         return text
 
     prompt = (
-        f"A student logged brief notes for {subject}. Expand them into "
-        f"concrete study facts that a real quiz could test.\n\n"
+        f"A student logged brief notes for {subject}. Infer the SKILL or "
+        f"TOPIC they are learning, then expand into practice material for "
+        f"a real quiz.\n\n"
         f"Notes:\n---\n{text}\n---\n\n"
-        f"Return a short topic label plus at least 6 specific facts, rules, "
-        f"definitions, steps, examples, or skills from that topic.\n"
-        f"If notes only say something like \"we learned the alphabet\", "
-        f"list alphabet knowledge itself (letter order, vowel vs consonant, "
-        f"letter sounds, words that start with a letter, uppercase/lowercase).\n"
-        f"Do NOT list meta facts like \"the student studied today\" or "
-        f"\"the topic was the alphabet\". Every fact must be content."
+        f"Return a short topic label plus at least 8 concrete items that "
+        f"support VARIED practice of that skill — not just restating the "
+        f"student's one example.\n\n"
+        f"Rules:\n"
+        f"- Treat examples in the notes as SAMPLES of the skill "
+        f"(e.g. \"1+1=2\" means single-digit addition), then list "
+        f"ADDITIONAL similar practice items "
+        f"(e.g. 2+3, 4+5, 7+1, 6+2, 3+3, 8+0).\n"
+        f"- Include the rule/definition when useful "
+        f"(e.g. \"add the ones place\", letter order, formula).\n"
+        f"- If notes say \"we learned the alphabet\", list alphabet "
+        f"knowledge itself (letter order, vowels, sounds, starters).\n"
+        f"- Do NOT list meta facts like \"the student studied today\".\n"
+        f"- Every item must be content they can practice."
     )
     try:
         parsed = _gemini_json(prompt, FACTS_FOR_QUIZ_SCHEMA)
@@ -236,11 +244,12 @@ def expand_notes_for_quiz(subject: str, notes: str) -> str:
         return text
 
     topic = str(parsed.get("topic") or subject).strip() or subject
-    bullet_block = "\n".join(f"- {f}" for f in facts[:16])
+    bullet_block = "\n".join(f"- {f}" for f in facts[:20])
     return (
-        f"Topic: {topic}\n"
-        f"Original notes: {text}\n"
-        f"Quizable facts (use ONLY these as the quiz source):\n"
+        f"Topic / skill to practice: {topic}\n"
+        f"Original notes (examples only — do NOT quiz only these):\n{text}\n"
+        f"Practice bank (use these to make VARIED questions of the same "
+        f"skill; invent more similar items when helpful):\n"
         f"{bullet_block}"
     )
 
@@ -335,13 +344,15 @@ _DIFFICULTY_GUIDANCE = {
         "supported by the notes."
     ),
     "medium": (
-        "Difficulty: MEDIUM. Mix recall with light application. Questions should "
-        "need a bit of thinking, but stay fair for someone who studied the notes."
+        "Difficulty: MEDIUM. Mix light recall with real practice/application. "
+        "Prefer working new similar problems over quoting the notes. Stay fair "
+        "for someone who studied this skill."
     ),
     "hard": (
         "Difficulty: HARD. Prefer application, comparison, and multi-step "
-        "thinking. Wrong options should be plausible. Still stay grounded in "
-        "the notes — do not invent unrelated advanced topics."
+        "thinking with NEW similar problems. Wrong options should be plausible. "
+        "Stay inside the same skill/topic — do not invent unrelated advanced "
+        "material."
     ),
 }
 
@@ -389,46 +400,58 @@ def generate_quiz_questions(
 
     def _build_prompt(count: int) -> str:
         return (
-            f"You are a friendly tutor helping a student review {subject}.\n\n"
-            f"Here is the study material (the ONLY source of facts to quiz on):\n"
+            f"You are a friendly tutor helping a student PRACTICE {subject}.\n\n"
+            f"Study material / topic brief:\n"
             f"---\n{quiz_source}\n---\n"
             f"{focus_block}\n"
             f"{difficulty_block}\n\n"
-            f"Write {count} multiple choice questions that test the "
-            f"ACTUAL information, skills, facts, vocabulary, and concepts "
-            f"above — as if this were a real class quiz on the material.\n\n"
+            f"Write {count} multiple choice questions that help the student "
+            f"PRACTICE the skill or topic above — like a real worksheet or "
+            f"class quiz, not a memory check of what they typed in the app.\n\n"
+            f"CRITICAL — VARIETY / TRANSFER:\n"
+            f"- Notes often include only 1–2 examples. Those are SAMPLES of "
+            f"the skill. Do NOT make every question a rephrase of the same "
+            f"example.\n"
+            f"- Invent NEW but SIMILAR practice items of the same type "
+            f"(same operation, concept, rule, vocabulary set, or skill).\n"
+            f"- Math example: if notes say single-digit addition and "
+            f"\"1+1=2\", ask OTHER single-digit sums "
+            f"(2+3, 4+5, 7+1, 6+2, 8+0, 3+4…) — not only 1+1.\n"
+            f"- Language example: if notes teach \"B makes /b/\", ask about "
+            f"other letters/sounds from the same lesson family.\n"
+            f"- Science example: if notes give one photosynthesis fact, ask "
+            f"related facts/steps from that same topic.\n"
+            f"- Stay inside the topic/skill they studied — don't jump to "
+            f"unrelated advanced material.\n"
+            f"- Prefer a mix: apply the skill, compare, finish a step, pick "
+            f"the correct result — so the quiz actually builds practice.\n\n"
             f"Every question MUST check a concrete fact or skill "
-            f"(letter order, sounds, definitions, steps, formulas, examples, "
-            f"cause/effect, vocabulary meaning, etc.).\n\n"
-            f"A student who never saw these notes should still be able to "
-            f"answer from knowing the subject content — not from remembering "
-            f"what was logged in the app.\n\n"
+            f"(computations, letter order, sounds, definitions, steps, "
+            f"formulas, cause/effect, vocabulary meaning, etc.).\n\n"
+            f"A student who knows the TOPIC should be able to answer even if "
+            f"they never memorized the exact sentence in their notes.\n\n"
             f"CRITICAL — FORBIDDEN meta / diary questions about the learning "
-            f"session. The student already knows what they studied. Never ask "
-            f"what they learned, covered, studied, practiced, or did today / "
-            f"this day / this session. Ban questions like:\n"
+            f"session. Never ask what they learned, covered, studied, "
+            f"practiced, or did today / this day / this session. Ban:\n"
             f"- What did we / you learn today / on this exact day?\n"
             f"- What subject / topic did we cover?\n"
-            f"- Did we learn the alphabet / X?\n"
+            f"- Did we learn X?\n"
             f"- What was in your notes?\n"
-            f"- What activity did you do?\n"
             f"- What was today's lesson / focus?\n\n"
-            f"GOOD examples (content): \"Which letter comes after M?\" "
-            f"\"What sound does B make?\" \"Which word starts with A?\" "
+            f"GOOD: \"What is 4 + 5?\" \"Which letter comes after M?\" "
+            f"\"What sound does B make?\" "
             f"\"What does photosynthesis produce?\"\n"
-            f"BAD examples (meta — never write these): "
-            f"\"What did you learn today?\" "
-            f"\"What did you learn on this exact day?\" "
-            f"\"We studied the alphabet — true or false?\" "
-            f"\"What topic was in your notes?\"\n\n"
+            f"BAD: \"What did you learn today?\" "
+            f"\"What example was in your notes?\" "
+            f"\"We studied addition — true or false?\"\n\n"
             f"Never use topic labels as the correct answer "
-            f"(e.g. \"the alphabet\", \"today's notes\", \"math\"). "
+            f"(e.g. \"single digit addition\", \"today's notes\"). "
             f"The correct option must be a real content answer "
-            f"(a letter, sound, definition, number, example, etc.).\n\n"
+            f"(a number, letter, sound, definition, step, etc.).\n\n"
             f"Each question needs exactly 4 answer options, with only one "
-            f"correct answer. Keep wording clear and age-appropriate for a "
-            f"middle/high school student. Vary which option index (0-3) is "
-            f"correct."
+            f"correct answer. Keep wording clear and age-appropriate. "
+            f"Vary which option index (0-3) is correct. Across the set, "
+            f"avoid repeating the same equation/example more than once."
         )
 
     questions: list[QuizQuestion] = []

@@ -107,22 +107,22 @@ SHOP_CATALOG = [
     {
         "id": "look-lavender-soft",
         "name": "OG Ara",
-        "emoji": "🌼",
+        "emoji": "🦋",
         "fullImage": "looks/look-floral-cottage.png",
         "price": 0,
         "slot": "outfit",
         "gender": "girl",
-        "pieces": "Original mascot · Floral cottage dress · White socks · Brown loafers",
+        "pieces": "Cream butterfly dress · Twin pink bows · White socks · Brown loafers",
     },
     {
         "id": "look-lavender-soft-boy",
         "name": "OG Ara (Boy)",
-        "emoji": "🌼",
+        "emoji": "💙",
         "fullImage": "looks/look-floral-cottage-boy.png",
         "price": 0,
         "slot": "outfit",
         "gender": "boy",
-        "pieces": "Boy mascot · Floral cottage shirt · Dark shorts · Brown loafers",
+        "pieces": "Blue striped windbreaker · Studded belt · Baggy jeans · Black sneakers",
     },
     {
         "id": "look-boy-cream-hoodie",
@@ -2391,7 +2391,14 @@ def _require_lounge_room(room_id: Optional[str]) -> str:
     return rid
 
 
-def _lounge_author_label(email: Optional[str], user_id: str) -> str:
+def _lounge_author_label(
+    email: Optional[str],
+    user_id: str,
+    display_name: Optional[str] = None,
+) -> str:
+    name = (display_name or "").strip()
+    if name:
+        return name[:24]
     if email and "@" in email:
         local = email.split("@", 1)[0].strip()
         if local:
@@ -2577,7 +2584,9 @@ def post_lounge_message(body: LoungePostRequest, user: CurrentUser):
     row = {
         "user_id": user.id,
         "room_id": room,
-        "author_label": _lounge_author_label(user.email, user.id),
+        "author_label": _lounge_author_label(
+            user.email, user.id, user.display_name
+        ),
         "body": text[:LOUNGE_BODY_MAX],
         "image_path": image_path,
         "reply_to_id": reply_to_id,

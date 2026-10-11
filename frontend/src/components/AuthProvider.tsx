@@ -24,10 +24,18 @@ type AuthContextValue = {
   session: Session | null;
   isLoading: boolean;
   accessToken: string | null;
+  displayName: string;
   signUp: (email: string, password: string) => Promise<SignUpResult>;
   signIn: (email: string, password: string) => Promise<string | null>;
   signOut: () => Promise<void>;
+  updateDisplayName: (name: string) => Promise<string | null>;
 };
+
+function readDisplayName(user: User | null | undefined): string {
+  if (!user) return "";
+  const raw = user.user_metadata?.display_name;
+  return typeof raw === "string" ? raw.trim().slice(0, 24) : "";
+}
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
@@ -108,17 +116,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
   }, []);
 
+  const updateDisplayName = useCallback(async (name: string) => {
+    const cleaned = name.trim().replace(/\s+/g, " ").slice(0, 24);
+    if (cleaned.length < 2) {
+      return "Pick a name at least 2 characters.";
+    }
+    if (!/^[\w .'-]+$/u.test(cleaned)) {
+      return "Use letters, numbers, spaces, or . _ ' - only.";
+    }
+    try {
+      const { data, error } = await supabase.auth.updateUser({
+        data: { display_name: cleaned },
+      });
+      if (error) return error.message;
+      if (data.session) {
+        setSession(data.session);
+      } else if (data.user) {
+        setSession((prev) =>
+          prev ? { ...prev, user: data.user } : prev
+        );
+      }
+      return null;
+    } catch (err) {
+      return err instanceof Error ? err.message : "Couldn't save that name.";
+    }
+  }, []);
+
+  const user = session?.user ?? null;
+
   const value = useMemo<AuthContextValue>(
     () => ({
-      user: session?.user ?? null,
+      user,
       session,
       isLoading,
       accessToken: session?.access_token ?? null,
+      displayName: readDisplayName(user),
       signUp,
       signIn,
       signOut,
+      updateDisplayName,
     }),
-    [session, isLoading, signUp, signIn, signOut]
+    [user, session, isLoading, signUp, signIn, signOut, updateDisplayName]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

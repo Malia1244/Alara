@@ -24,6 +24,7 @@ SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 class AuthUser:
     id: str
     email: Optional[str]
+    display_name: Optional[str] = None
 
 
 def get_current_user(
@@ -64,9 +65,15 @@ def get_current_user(
     if not user_id:
         raise HTTPException(status_code=401, detail="Invalid session user.")
     email = data.get("email")
+    meta = data.get("user_metadata") or data.get("raw_user_meta_data") or {}
+    raw_name = meta.get("display_name") if isinstance(meta, dict) else None
+    display_name = (
+        str(raw_name).strip()[:24] if raw_name and str(raw_name).strip() else None
+    )
     return AuthUser(
         id=str(user_id),
         email=str(email).strip() if email else None,
+        display_name=display_name,
     )
 
 
