@@ -2,6 +2,7 @@
 
 import AraAvatar from "@/components/AraAvatar";
 import type { ShopState } from "@/lib/api";
+import type { AraGender } from "@/lib/araPrefs";
 import type { AraPose } from "@/lib/araPoses";
 
 type Props = {
@@ -16,6 +17,8 @@ type Props = {
   shop?: ShopState | null;
   /** Force a specific portrait (login girl/boy pair, etc.). */
   lookSrc?: string | null;
+  /** Force gender so auth pair isn't tied to saved prefs. */
+  gender?: AraGender;
 };
 
 const PAD = {
@@ -38,6 +41,7 @@ export default function CharacterStage({
   pad = "md",
   shop = null,
   lookSrc = null,
+  gender,
 }: Props) {
   return (
     <div
@@ -53,6 +57,7 @@ export default function CharacterStage({
           priority={priority}
           shop={shop}
           lookSrc={lookSrc}
+          gender={gender}
         />
       </div>
     </div>

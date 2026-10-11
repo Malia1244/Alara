@@ -2,10 +2,9 @@
 
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
-import CharacterStage from "@/components/CharacterStage";
+import AuthAraPair from "@/components/AuthAraPair";
 import CutFlowerScatter from "@/components/CutFlowers";
 import { useAuth } from "@/components/AuthProvider";
-import { araPoseSrc } from "@/lib/araPoses";
 
 const inputClass =
   "rounded-full border border-border bg-white px-5 py-2.5 text-sm font-normal text-ink outline-none transition-[border-color,box-shadow] shadow-[0_8px_22px_-16px_rgba(140,100,115,0.28)] focus:border-brand focus:shadow-[0_0_0_3px_rgba(201,160,171,0.28)]";
@@ -31,24 +30,7 @@ export default function LoginPage() {
       <CutFlowerScatter variant="auth" />
       <main className="relative z-[1] flex w-full max-w-md flex-col gap-6 overflow-visible">
         <div className="flex flex-col items-center text-center">
-          <div className="flex items-end justify-center gap-1 sm:gap-2">
-            <CharacterStage
-              size={96}
-              pose="wink"
-              priority
-              pad="md"
-              label="Girl Ara"
-              lookSrc={araPoseSrc("girl", "wink")}
-            />
-            <CharacterStage
-              size={96}
-              pose="wave"
-              priority
-              pad="md"
-              label="Boy Ara"
-              lookSrc={araPoseSrc("boy", "wave")}
-            />
-          </div>
+          <AuthAraPair girlPose="wink" boyPose="wave" />
           <h1 className="mt-5 font-display text-3xl font-semibold text-ink">
             Alara
           </h1>

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
-import CharacterStage from "@/components/CharacterStage";
+import AuthAraPair from "@/components/AuthAraPair";
 import CutFlowerScatter from "@/components/CutFlowers";
 import { useAuth } from "@/components/AuthProvider";
 import {
@@ -53,7 +53,7 @@ export default function SignupPage() {
         <CutFlowerScatter variant="auth" />
         <main className="relative z-[1] flex w-full max-w-md flex-col gap-6 overflow-visible">
           <div className="flex flex-col items-center text-center">
-            <CharacterStage size={100} pose="wave" priority pad="md" />
+            <AuthAraPair girlPose="wave" boyPose="wave" />
             <h1 className="mt-5 font-display text-3xl font-semibold text-ink">
               Check your email
             </h1>
@@ -92,7 +92,7 @@ export default function SignupPage() {
       <CutFlowerScatter variant="auth" />
       <main className="relative z-[1] flex w-full max-w-md flex-col gap-6 overflow-visible">
         <div className="flex flex-col items-center text-center">
-          <CharacterStage size={100} pose="cheer" priority pad="md" />
+          <AuthAraPair girlPose="cheer" boyPose="wave" />
           <h1 className="mt-5 font-display text-3xl font-semibold text-ink">
             Alara
           </h1>

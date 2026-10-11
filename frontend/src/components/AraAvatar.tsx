@@ -11,6 +11,7 @@ import {
   getActiveLookSrc,
   syncLookFromShop,
 } from "@/lib/araOutfitCache";
+import type { AraGender } from "@/lib/araPrefs";
 import {
   araPoseSrc,
   isOgLookSrc,
@@ -29,6 +30,8 @@ type Props = {
   shop?: ShopState | null;
   /** Force a specific portrait (e.g. login girl + boy pair). */
   lookSrc?: string | null;
+  /** Force gender for pose sheets / fallbacks (ignores saved prefs). */
+  gender?: AraGender;
 };
 
 export default function AraAvatar({
@@ -39,10 +42,11 @@ export default function AraAvatar({
   motion = "idle",
   shop = null,
   lookSrc = null,
+  gender: genderOverride,
 }: Props) {
   const { prefs } = useAraPrefs();
   const motionEnabled = prefs.motion;
-  const gender = prefs.gender;
+  const gender = genderOverride ?? prefs.gender;
   const look = useAraLook();
   const [shopLookSrc, setShopLookSrc] = useState<string | null>(null);
 
