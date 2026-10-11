@@ -187,7 +187,7 @@ export default function AraPrefsControls({
                   onClick={() => setGender(opt.id)}
                   className={`rounded-lg px-2 py-2 text-[11px] font-semibold transition ${
                     active
-                      ? "bg-brand text-white"
+                      ? "bg-brand-ink text-white shadow-sm"
                       : "border border-border bg-white text-stone-600 hover:border-brand/40"
                   }`}
                 >
@@ -265,7 +265,7 @@ export default function AraPrefsControls({
                   }}
                   className={`rounded-lg px-2 py-2 text-[11px] font-semibold transition disabled:opacity-60 ${
                     active
-                      ? "bg-brand text-white"
+                      ? "bg-brand-ink text-white shadow-sm"
                       : unlocked
                         ? "border border-border bg-white text-stone-600 hover:border-brand/40"
                         : "border border-dashed border-border bg-panel text-muted"
@@ -274,7 +274,7 @@ export default function AraPrefsControls({
                   <span className="block">{t.label}</span>
                   <span
                     className={`mt-0.5 block text-[10px] font-medium ${
-                      active ? "text-white/80" : "text-muted"
+                      active ? "text-white/90" : "text-muted"
                     }`}
                   >
                     {busy

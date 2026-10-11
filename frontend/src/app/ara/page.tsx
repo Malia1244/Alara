@@ -133,7 +133,7 @@ export default function AraPage() {
                 onClick={() => setGender(opt.id)}
                 className={`rounded-full px-4 py-1.5 text-xs font-semibold transition ${
                   prefs.gender === opt.id
-                    ? "bg-brand text-white"
+                    ? "bg-brand-ink text-white shadow-sm"
                     : "border border-border bg-surface text-ink hover:bg-brand-soft/40"
                 }`}
               >
@@ -230,7 +230,7 @@ export default function AraPage() {
                       <span
                         className={`mt-auto self-start rounded-xl px-3 py-1 text-[11px] font-semibold ${
                           isEquipped
-                            ? "bg-brand text-white"
+                            ? "bg-brand-ink text-white shadow-sm"
                             : "bg-stone-100 text-stone-600"
                         }`}
                       >

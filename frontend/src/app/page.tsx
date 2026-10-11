@@ -216,7 +216,7 @@ export default function Home() {
                     onClick={() => setGender(opt.id)}
                     className={`rounded-full px-3 py-1 text-[11px] font-semibold transition ${
                       prefs.gender === opt.id
-                        ? "bg-brand text-white"
+                        ? "bg-brand-ink text-white shadow-sm"
                         : "border border-border bg-white/80 text-ink hover:bg-white"
                     }`}
                   >
