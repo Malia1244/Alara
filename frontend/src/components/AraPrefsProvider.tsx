@@ -13,9 +13,17 @@ import {
   applyUiTheme,
   readAraPrefs,
   writeAraPrefs,
+  type AraGender,
   type AraPrefs,
   type UiTheme,
 } from "@/lib/araPrefs";
+import { equipShopItem } from "@/lib/api";
+import {
+  defaultLookSrc,
+  defaultOutfitId,
+  syncLookFromShop,
+  writeCachedLookSrc,
+} from "@/lib/araOutfitCache";
 
 type AraPrefsContextValue = {
   prefs: AraPrefs;
@@ -24,6 +32,7 @@ type AraPrefsContextValue = {
   setStudyReminders: (on: boolean) => void;
   setReminderHour: (hour: number) => void;
   setTheme: (theme: UiTheme) => void;
+  setGender: (gender: AraGender) => void;
 };
 
 const AraPrefsContext = createContext<AraPrefsContextValue>({
@@ -33,6 +42,7 @@ const AraPrefsContext = createContext<AraPrefsContextValue>({
   setStudyReminders: () => {},
   setReminderHour: () => {},
   setTheme: () => {},
+  setGender: () => {},
 });
 
 export function AraPrefsProvider({ children }: { children: ReactNode }) {
@@ -57,6 +67,17 @@ export function AraPrefsProvider({ children }: { children: ReactNode }) {
     setPrefs(next);
     writeAraPrefs(next);
     if (partial.theme) applyUiTheme(partial.theme);
+    if (partial.gender) {
+      writeCachedLookSrc(defaultLookSrc(partial.gender));
+      // Equip that version's free OG look so shop/closet stay in sync.
+      void equipShopItem(defaultOutfitId(partial.gender))
+        .then((shop) => {
+          syncLookFromShop(shop, partial.gender!);
+        })
+        .catch(() => {
+          // Offline / backend asleep — look cache still updates locally.
+        });
+    }
   }
 
   return (
@@ -68,6 +89,7 @@ export function AraPrefsProvider({ children }: { children: ReactNode }) {
         setStudyReminders: (on) => update({ studyReminders: on }),
         setReminderHour: (hour) => update({ reminderHour: hour }),
         setTheme: (theme) => update({ theme }),
+        setGender: (gender) => update({ gender }),
       }}
     >
       {children}

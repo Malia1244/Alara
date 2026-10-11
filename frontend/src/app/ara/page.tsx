@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import CharacterStage from "@/components/CharacterStage";
 import { CutFlower } from "@/components/CutFlowers";
 import NoticeBanner from "@/components/NoticeBanner";
+import { useAraPrefs } from "@/components/AraPrefsProvider";
 import {
   equipShopItem,
   fetchShopState,
@@ -14,7 +15,10 @@ import {
   type ShopState,
 } from "@/lib/api";
 
-const FREE_STARTER_IDS = new Set(["look-lavender-soft"]);
+const FREE_STARTER_IDS = new Set([
+  "look-lavender-soft",
+  "look-lavender-soft-boy",
+]);
 
 function outfitPreviewSrc(item: ShopItem): string | null {
   if (item.fullImage) return `/outfits/${item.fullImage}`;
@@ -23,6 +27,7 @@ function outfitPreviewSrc(item: ShopItem): string | null {
 }
 
 export default function AraPage() {
+  const { prefs, setGender } = useAraPrefs();
   const [shop, setShop] = useState<ShopState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -51,10 +56,12 @@ export default function AraPage() {
   const ownedItems = useMemo(() => {
     if (!shop) return [] as ShopItem[];
     const owned = new Set([...shop.owned_item_ids, ...FREE_STARTER_IDS]);
-    return shop.items.filter(
-      (item) => owned.has(item.id) && item.slot === "outfit"
-    );
-  }, [shop]);
+    return shop.items.filter((item) => {
+      if (!owned.has(item.id) || item.slot !== "outfit") return false;
+      const g = item.gender || "girl";
+      return g === "any" || g === prefs.gender;
+    });
+  }, [shop, prefs.gender]);
 
   async function handleEquip(itemId: string) {
     setBusyId(itemId);
@@ -113,6 +120,27 @@ export default function AraPage() {
             priority
             pad="lg"
           />
+          <div className="flex gap-2">
+            {(
+              [
+                { id: "girl" as const, label: "Girl Ara" },
+                { id: "boy" as const, label: "Boy Ara" },
+              ] as const
+            ).map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => setGender(opt.id)}
+                className={`rounded-full px-4 py-1.5 text-xs font-semibold transition ${
+                  prefs.gender === opt.id
+                    ? "bg-brand text-white"
+                    : "border border-border bg-surface text-ink hover:bg-brand-soft/40"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
           <p className="rounded-lg border border-border bg-surface px-4 py-1.5 text-xs font-semibold text-brand-ink">
             {isLoading
               ? "Loading closet…"

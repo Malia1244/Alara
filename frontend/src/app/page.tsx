@@ -92,7 +92,7 @@ const inputClass =
   "w-full rounded-full border border-border bg-white px-5 py-2.5 text-sm text-ink outline-none transition-[border-color,box-shadow] placeholder:text-stone-400 shadow-[0_8px_22px_-16px_rgba(140,100,115,0.28)] focus:border-brand focus:shadow-[0_0_0_3px_rgba(201,160,171,0.28)]";
 
 export default function Home() {
-  const { prefs } = useAraPrefs();
+  const { prefs, setGender } = useAraPrefs();
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -196,12 +196,35 @@ export default function Home() {
       <main className="relative z-[1] flex w-full max-w-4xl flex-col gap-8 overflow-visible">
         <header className="animate-rise bloom-banner relative z-0 flex flex-col gap-6 p-6 sm:p-8 lg:flex-row lg:items-center lg:justify-between">
           <div className="relative z-[1] flex min-w-0 flex-1 flex-col gap-5 sm:flex-row sm:items-center">
-            <CharacterStage
-              size={112}
-              pose={araPose}
-              priority
-              pad="md"
-            />
+            <div className="flex flex-col items-center gap-2">
+              <CharacterStage
+                size={112}
+                pose={araPose}
+                priority
+                pad="md"
+              />
+              <div className="flex gap-1.5">
+                {(
+                  [
+                    { id: "girl" as const, label: "Girl" },
+                    { id: "boy" as const, label: "Boy" },
+                  ] as const
+                ).map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setGender(opt.id)}
+                    className={`rounded-full px-3 py-1 text-[11px] font-semibold transition ${
+                      prefs.gender === opt.id
+                        ? "bg-brand text-white"
+                        : "border border-border bg-white/80 text-ink hover:bg-white"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="min-w-0">
               <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-sky">
                 Soft study space

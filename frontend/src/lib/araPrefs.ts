@@ -21,6 +21,8 @@ export function isThemeUnlocked(
   return ownedItemIds.includes(id);
 }
 
+export type AraGender = "girl" | "boy";
+
 export type AraPrefs = {
   /** Idle bob + pose-change bounce */
   motion: boolean;
@@ -32,6 +34,8 @@ export type AraPrefs = {
   reminderHour: number;
   /** App color / vibe theme */
   theme: UiTheme;
+  /** Girl or boy Ara mascot */
+  gender: AraGender;
 };
 
 export const DEFAULT_ARA_PREFS: AraPrefs = {
@@ -40,6 +44,7 @@ export const DEFAULT_ARA_PREFS: AraPrefs = {
   studyReminders: false,
   reminderHour: 17,
   theme: "original",
+  gender: "girl",
 };
 
 const STORAGE_KEY = "alara-ara-prefs";
@@ -58,6 +63,10 @@ function normalizeTheme(value: unknown): UiTheme {
   return "original";
 }
 
+function normalizeGender(value: unknown): AraGender {
+  return value === "boy" ? "boy" : "girl";
+}
+
 export function readAraPrefs(): AraPrefs {
   if (typeof window === "undefined") return DEFAULT_ARA_PREFS;
   try {
@@ -70,6 +79,7 @@ export function readAraPrefs(): AraPrefs {
       studyReminders: parsed.studyReminders === true,
       reminderHour: clampHour(parsed.reminderHour),
       theme: normalizeTheme(parsed.theme),
+      gender: normalizeGender(parsed.gender),
     };
   } catch {
     return DEFAULT_ARA_PREFS;

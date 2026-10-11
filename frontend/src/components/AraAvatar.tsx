@@ -7,6 +7,7 @@ import { useAraPrefs } from "@/components/AraPrefsProvider";
 import type { ShopState } from "@/lib/api";
 import {
   DEFAULT_LOOK_SRC,
+  defaultLookSrc,
   getActiveLookSrc,
   syncLookFromShop,
 } from "@/lib/araOutfitCache";
@@ -34,6 +35,7 @@ export default function AraAvatar({
 }: Props) {
   const { prefs } = useAraPrefs();
   const motionEnabled = prefs.motion;
+  const gender = prefs.gender;
   const look = useAraLook();
   // Local override only while a parent passes live shop (equip preview).
   const [shopLookSrc, setShopLookSrc] = useState<string | null>(null);
@@ -43,17 +45,24 @@ export default function AraAvatar({
       setShopLookSrc(null);
       return;
     }
-    setShopLookSrc(syncLookFromShop(shop));
-  }, [shop]);
+    setShopLookSrc(syncLookFromShop(shop, gender));
+  }, [shop, gender]);
 
   const preferred =
-    shopLookSrc || look.lookSrc || getActiveLookSrc() || DEFAULT_LOOK_SRC;
-  const [src, setSrc] = useState(preferred);
+    shopLookSrc || look.lookSrc || getActiveLookSrc() || defaultLookSrc(gender);
+  // If cached look is the other Ara's OG, snap to this gender's default.
+  const genderedPreferred =
+    gender === "boy" && preferred.endsWith("look-floral-cottage.png")
+      ? defaultLookSrc("boy")
+      : gender === "girl" && preferred.endsWith("look-floral-cottage-boy.png")
+        ? defaultLookSrc("girl")
+        : preferred;
+  const [src, setSrc] = useState(genderedPreferred);
   const ready = look.ready || Boolean(shopLookSrc);
 
   useLayoutEffect(() => {
-    setSrc(preferred);
-  }, [preferred]);
+    setSrc(genderedPreferred);
+  }, [genderedPreferred]);
 
   const motionClass =
     motionEnabled && motion === "idle"
@@ -84,7 +93,9 @@ export default function AraAvatar({
         style={{ backgroundColor: "transparent" }}
         unoptimized
         onError={() => {
-          if (src !== DEFAULT_LOOK_SRC) setSrc(DEFAULT_LOOK_SRC);
+          const fallback = defaultLookSrc(gender);
+          if (src !== fallback) setSrc(fallback);
+          else if (src !== DEFAULT_LOOK_SRC) setSrc(DEFAULT_LOOK_SRC);
         }}
       />
     </div>

@@ -1,16 +1,43 @@
 /** Shared equipped look — one in-memory source of truth for the whole app. */
 
+import type { AraGender } from "@/lib/araPrefs";
+
 const STORAGE_KEY = "alara-equipped-look-src";
 const CHANGE_EVENT = "alara-outfit-changed";
 
 /** OG Ara = floral cottage dress (PNG). Keep in sync with backend classic art. */
-export const DEFAULT_LOOK_SRC = "/outfits/looks/look-floral-cottage.png";
+export const GIRL_DEFAULT_LOOK_SRC = "/outfits/looks/look-floral-cottage.png";
+export const BOY_DEFAULT_LOOK_SRC = "/outfits/looks/look-floral-cottage-boy.png";
+export const DEFAULT_LOOK_SRC = GIRL_DEFAULT_LOOK_SRC;
 export const OG_OUTFIT_ID = "look-lavender-soft";
+export const OG_BOY_OUTFIT_ID = "look-lavender-soft-boy";
+
+export function defaultLookSrc(gender: AraGender = "girl"): string {
+  return gender === "boy" ? BOY_DEFAULT_LOOK_SRC : GIRL_DEFAULT_LOOK_SRC;
+}
+
+export function defaultOutfitId(gender: AraGender = "girl"): string {
+  return gender === "boy" ? OG_BOY_OUTFIT_ID : OG_OUTFIT_ID;
+}
 
 type ShopLike = {
   equipped: Record<string, string | null>;
-  items: { id: string; slot: string; fullImage: string | null }[];
+  items: {
+    id: string;
+    slot: string;
+    fullImage: string | null;
+    gender?: string | null;
+  }[];
 };
+
+function itemMatchesGender(
+  gender: AraGender | undefined,
+  itemGender: string | null | undefined
+): boolean {
+  if (!gender) return true;
+  const g = itemGender || "girl";
+  return g === "any" || g === gender;
+}
 
 /** Survives remounts; avoids SSR default → cache flash. */
 let memoryLookSrc: string | null = null;
@@ -81,12 +108,19 @@ export function clearCachedLookSrc() {
   notifyLookChanged(DEFAULT_LOOK_SRC);
 }
 
-export function lookSrcFromShop(shop: ShopLike): string {
+export function lookSrcFromShop(
+  shop: ShopLike,
+  gender: AraGender = "girl"
+): string {
   const byId = Object.fromEntries(shop.items.map((item) => [item.id, item]));
   const outfitId = shop.equipped.outfit;
   const outfit = outfitId ? byId[outfitId] : null;
-  if (outfit?.fullImage) {
+  if (outfit?.fullImage && itemMatchesGender(gender, outfit.gender)) {
     return migrateLookSrc(`/outfits/${outfit.fullImage}`);
+  }
+  // Wrong-gender outfit equipped — fall back to that Ara's default look.
+  if (outfit && !itemMatchesGender(gender, outfit.gender)) {
+    return defaultLookSrc(gender);
   }
   // Equipped id present but catalog row missing — keep current look, don't snap to OG.
   if (outfitId) return getActiveLookSrc();
@@ -94,16 +128,19 @@ export function lookSrcFromShop(shop: ShopLike): string {
   for (const id of Object.values(shop.equipped)) {
     if (!id) continue;
     const item = byId[id];
-    if (item?.fullImage) {
+    if (item?.fullImage && itemMatchesGender(gender, item.gender)) {
       return migrateLookSrc(`/outfits/${item.fullImage}`);
     }
   }
-  return DEFAULT_LOOK_SRC;
+  return defaultLookSrc(gender);
 }
 
 /** Persist shop equip state and broadcast so every Ara avatar updates. */
-export function syncLookFromShop(shop: ShopLike): string {
-  const src = lookSrcFromShop(shop);
+export function syncLookFromShop(
+  shop: ShopLike,
+  gender: AraGender = "girl"
+): string {
+  const src = lookSrcFromShop(shop, gender);
   writeCachedLookSrc(src);
   return getActiveLookSrc();
 }

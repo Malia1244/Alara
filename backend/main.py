@@ -96,11 +96,13 @@ POINTS_PER_LEARNING_ENTRY = 25
 # one portrait). A small curated set lives in public/outfits/looks/ so the
 # giant combos/ folder can stay off free Vercel deploys.
 CLASSIC_OUTFIT_ID = "look-lavender-soft"
+CLASSIC_BOY_OUTFIT_ID = "look-lavender-soft-boy"
 CLOTHING_SLOTS = ("outfit", "hair", "head", "top", "pants")
-FREE_STARTER_ITEM_IDS = ["look-lavender-soft"]
+FREE_STARTER_ITEM_IDS = ["look-lavender-soft", "look-lavender-soft-boy"]
 
 # "pieces" is shown in the shop as the outfit breakdown (not mix-and-match).
 # Outfit portraits use the exact pastel Ara character + sheet looks.
+# "gender": "girl" | "boy" | "any" — closet/shop filter for Ara version.
 SHOP_CATALOG = [
     {
         "id": "look-lavender-soft",
@@ -109,7 +111,78 @@ SHOP_CATALOG = [
         "fullImage": "looks/look-floral-cottage.png",
         "price": 0,
         "slot": "outfit",
+        "gender": "girl",
         "pieces": "Original mascot · Floral cottage dress · White socks · Brown loafers",
+    },
+    {
+        "id": "look-lavender-soft-boy",
+        "name": "OG Ara (Boy)",
+        "emoji": "🌼",
+        "fullImage": "looks/look-floral-cottage-boy.png",
+        "price": 0,
+        "slot": "outfit",
+        "gender": "boy",
+        "pieces": "Boy mascot · Floral cottage shirt · Dark shorts · Brown loafers",
+    },
+    {
+        "id": "look-boy-cream-hoodie",
+        "name": "Cream Hoodie Day",
+        "emoji": "☁️",
+        "fullImage": "looks/look-boy-cream-hoodie.png",
+        "price": 95,
+        "slot": "outfit",
+        "gender": "boy",
+        "pieces": "Cream hoodie · Black pants · White sneakers · Black tote",
+    },
+    {
+        "id": "look-boy-vest-cargo",
+        "name": "Vest Cargo Soft",
+        "emoji": "🎒",
+        "fullImage": "looks/look-boy-vest-cargo.png",
+        "price": 110,
+        "slot": "outfit",
+        "gender": "boy",
+        "pieces": "Tan vest · White hoodie · Light cargos · Backpack",
+    },
+    {
+        "id": "look-boy-bucket-hat",
+        "name": "Bucket Hat Street",
+        "emoji": "🧢",
+        "fullImage": "looks/look-boy-bucket-hat.png",
+        "price": 105,
+        "slot": "outfit",
+        "gender": "boy",
+        "pieces": "Black bucket hat · Black hoodie · Tan cargos · Messenger bag",
+    },
+    {
+        "id": "look-boy-plaid-blazer",
+        "name": "Plaid Blazer Edge",
+        "emoji": "🧥",
+        "fullImage": "looks/look-boy-plaid-blazer.png",
+        "price": 115,
+        "slot": "outfit",
+        "gender": "boy",
+        "pieces": "Tan plaid blazer · White shirt · Black cargos · Red sneakers",
+    },
+    {
+        "id": "look-boy-blue-sweat",
+        "name": "Blue Sweat Soft",
+        "emoji": "💙",
+        "fullImage": "looks/look-boy-blue-sweat.png",
+        "price": 100,
+        "slot": "outfit",
+        "gender": "boy",
+        "pieces": "Blue crewneck · White cargo shorts · Sneakers · Tote",
+    },
+    {
+        "id": "look-boy-yellow-zip",
+        "name": "Yellow Zip Bright",
+        "emoji": "💛",
+        "fullImage": "looks/look-boy-yellow-zip.png",
+        "price": 110,
+        "slot": "outfit",
+        "gender": "boy",
+        "pieces": "Yellow zip jacket · White tee · Black cropped pants · Bag",
     },
     {
         "id": "look-cat-hoodie",
@@ -324,6 +397,7 @@ SHOP_CATALOG = [
         "emoji": "🖤",
         "price": 150,
         "slot": "theme",
+        "gender": "any",
         "pieces": "Clean gray & indigo app look — unlock with points",
     },
     {
@@ -332,6 +406,7 @@ SHOP_CATALOG = [
         "emoji": "🎀",
         "price": 150,
         "slot": "theme",
+        "gender": "any",
         "pieces": "Warm orange & pink app look — unlock with points",
     },
 ]
@@ -392,6 +467,71 @@ def to_subject(row: dict) -> Subject:
         unit=row["unit"],
         test_date=row.get("test_date"),
         days_until_test=days_until_test,
+        created_at=row["created_at"],
+    )
+
+
+CALENDAR_SETUP_HINT = (
+    "Calendar events aren't set up yet. In Supabase → SQL Editor, run "
+    "supabase/migrations/008_calendar_events.sql, then try again."
+)
+
+
+class CalendarEventCreate(BaseModel):
+    title: str = Field(..., min_length=1, max_length=120)
+    event_date: str  # YYYY-MM-DD
+    notes: Optional[str] = Field(default="", max_length=500)
+    subject_id: Optional[str] = None
+
+
+class CalendarEventUpdate(BaseModel):
+    title: Optional[str] = Field(default=None, min_length=1, max_length=120)
+    event_date: Optional[str] = None
+    notes: Optional[str] = Field(default=None, max_length=500)
+    subject_id: Optional[str] = None
+
+
+class CalendarEvent(BaseModel):
+    id: str
+    title: str
+    event_date: str
+    notes: str
+    subject_id: Optional[str] = None
+    subject_name: Optional[str] = None
+    created_at: str
+
+
+def _parse_iso_date(value: str, field_name: str = "event_date") -> date:
+    try:
+        return date.fromisoformat(value)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400, detail=f"{field_name} must be YYYY-MM-DD"
+        ) from exc
+
+
+def _is_missing_calendar_table(exc: Exception) -> bool:
+    text = str(exc).lower()
+    return "calendar_events" in text and (
+        "does not exist" in text
+        or "could not find" in text
+        or "undefined_table" in text
+        or "42p01" in text
+    )
+
+
+def to_calendar_event(row: dict, subject_name: Optional[str] = None) -> CalendarEvent:
+    notes = row.get("notes") or ""
+    event_date = row.get("event_date")
+    if hasattr(event_date, "isoformat"):
+        event_date = event_date.isoformat()
+    return CalendarEvent(
+        id=row["id"],
+        title=row["title"],
+        event_date=str(event_date),
+        notes=notes,
+        subject_id=row.get("subject_id"),
+        subject_name=subject_name,
         created_at=row["created_at"],
     )
 
@@ -562,6 +702,8 @@ class ShopItem(BaseModel):
     slot: str
     # Human-readable breakdown, e.g. "Pigtails · Hoodie · Shorts · Shoes"
     pieces: Optional[str] = None
+    # girl / boy outfit filter; themes use "any"
+    gender: str = "girl"
 
 
 class ShopState(BaseModel):
@@ -2489,6 +2631,185 @@ def delete_lounge_message(message_id: str, user: CurrentUser):
         "user_id", user.id
     ).execute()
     _lounge_remove_image(supabase, row.get("image_path"))
+    return None
+
+
+def _calendar_subject_names(
+    supabase, user_id: str, subject_ids: list[str]
+) -> dict[str, str]:
+    ids = [sid for sid in subject_ids if sid]
+    if not ids:
+        return {}
+    response = (
+        supabase.table("subjects")
+        .select("id, name")
+        .eq("user_id", user_id)
+        .in_("id", ids)
+        .execute()
+    )
+    return {row["id"]: row["name"] for row in (response.data or [])}
+
+
+def _require_own_subject(supabase, user_id: str, subject_id: Optional[str]) -> Optional[str]:
+    if not subject_id:
+        return None
+    existing = (
+        supabase.table("subjects")
+        .select("id")
+        .eq("id", subject_id)
+        .eq("user_id", user_id)
+        .maybe_single()
+        .execute()
+    )
+    if not existing.data:
+        raise HTTPException(status_code=400, detail="Subject not found")
+    return subject_id
+
+
+@app.get("/calendar/events", response_model=List[CalendarEvent])
+def list_calendar_events(user_id: CurrentUserId):
+    supabase = get_supabase()
+    try:
+        response = (
+            supabase.table("calendar_events")
+            .select("id, title, event_date, notes, subject_id, created_at")
+            .eq("user_id", user_id)
+            .order("event_date", desc=False)
+            .execute()
+        )
+    except Exception as exc:
+        if _is_missing_calendar_table(exc):
+            raise HTTPException(status_code=503, detail=CALENDAR_SETUP_HINT) from exc
+        raise
+    rows = response.data or []
+    names = _calendar_subject_names(
+        supabase, user_id, [row.get("subject_id") for row in rows]
+    )
+    return [
+        to_calendar_event(row, names.get(row["subject_id"]) if row.get("subject_id") else None)
+        for row in rows
+    ]
+
+
+@app.post("/calendar/events", response_model=CalendarEvent, status_code=201)
+def create_calendar_event(body: CalendarEventCreate, user_id: CurrentUserId):
+    supabase = get_supabase()
+    parsed = _parse_iso_date(body.event_date)
+    subject_id = _require_own_subject(supabase, user_id, body.subject_id)
+    row = {
+        "user_id": user_id,
+        "title": body.title.strip(),
+        "event_date": parsed.isoformat(),
+        "notes": (body.notes or "").strip()[:500],
+        "subject_id": subject_id,
+    }
+    try:
+        response = supabase.table("calendar_events").insert(row).execute()
+    except Exception as exc:
+        if _is_missing_calendar_table(exc):
+            raise HTTPException(status_code=503, detail=CALENDAR_SETUP_HINT) from exc
+        raise
+    if not response.data:
+        raise HTTPException(status_code=500, detail="Failed to save event")
+    saved = response.data[0]
+    names = _calendar_subject_names(
+        supabase, user_id, [saved.get("subject_id")] if saved.get("subject_id") else []
+    )
+    return to_calendar_event(
+        saved, names.get(saved["subject_id"]) if saved.get("subject_id") else None
+    )
+
+
+@app.patch("/calendar/events/{event_id}", response_model=CalendarEvent)
+def update_calendar_event(
+    event_id: str, body: CalendarEventUpdate, user_id: CurrentUserId
+):
+    supabase = get_supabase()
+    try:
+        existing = (
+            supabase.table("calendar_events")
+            .select("id, title, event_date, notes, subject_id, created_at")
+            .eq("id", event_id)
+            .eq("user_id", user_id)
+            .maybe_single()
+            .execute()
+        )
+    except Exception as exc:
+        if _is_missing_calendar_table(exc):
+            raise HTTPException(status_code=503, detail=CALENDAR_SETUP_HINT) from exc
+        raise
+    if not existing.data:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    updates: dict = {}
+    if body.title is not None:
+        updates["title"] = body.title.strip()
+    if body.event_date is not None:
+        updates["event_date"] = _parse_iso_date(body.event_date).isoformat()
+    if body.notes is not None:
+        updates["notes"] = body.notes.strip()[:500]
+    if body.subject_id is not None:
+        # Empty string clears the link.
+        sid = body.subject_id.strip() if body.subject_id else None
+        updates["subject_id"] = _require_own_subject(supabase, user_id, sid) if sid else None
+
+    if not updates:
+        names = _calendar_subject_names(
+            supabase,
+            user_id,
+            [existing.data.get("subject_id")] if existing.data.get("subject_id") else [],
+        )
+        return to_calendar_event(
+            existing.data,
+            names.get(existing.data["subject_id"])
+            if existing.data.get("subject_id")
+            else None,
+        )
+
+    try:
+        response = (
+            supabase.table("calendar_events")
+            .update(updates)
+            .eq("id", event_id)
+            .eq("user_id", user_id)
+            .execute()
+        )
+    except Exception as exc:
+        if _is_missing_calendar_table(exc):
+            raise HTTPException(status_code=503, detail=CALENDAR_SETUP_HINT) from exc
+        raise
+    if not response.data:
+        raise HTTPException(status_code=500, detail="Failed to update event")
+    saved = response.data[0]
+    names = _calendar_subject_names(
+        supabase, user_id, [saved.get("subject_id")] if saved.get("subject_id") else []
+    )
+    return to_calendar_event(
+        saved, names.get(saved["subject_id"]) if saved.get("subject_id") else None
+    )
+
+
+@app.delete("/calendar/events/{event_id}", status_code=204)
+def delete_calendar_event(event_id: str, user_id: CurrentUserId):
+    supabase = get_supabase()
+    try:
+        existing = (
+            supabase.table("calendar_events")
+            .select("id")
+            .eq("id", event_id)
+            .eq("user_id", user_id)
+            .maybe_single()
+            .execute()
+        )
+    except Exception as exc:
+        if _is_missing_calendar_table(exc):
+            raise HTTPException(status_code=503, detail=CALENDAR_SETUP_HINT) from exc
+        raise
+    if not existing.data:
+        raise HTTPException(status_code=404, detail="Event not found")
+    supabase.table("calendar_events").delete().eq("id", event_id).eq(
+        "user_id", user_id
+    ).execute()
     return None
 
 

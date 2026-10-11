@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import CharacterStage from "@/components/CharacterStage";
 import { CutFlower } from "@/components/CutFlowers";
 import NoticeBanner from "@/components/NoticeBanner";
+import { useAraPrefs } from "@/components/AraPrefsProvider";
 import {
   equipShopItem,
   fetchShopState,
@@ -15,7 +16,10 @@ import {
   type ShopState,
 } from "@/lib/api";
 
-const FREE_STARTER_IDS = new Set(["look-lavender-soft"]);
+const FREE_STARTER_IDS = new Set([
+  "look-lavender-soft",
+  "look-lavender-soft-boy",
+]);
 
 function outfitPreviewSrc(item: ShopItem): string | null {
   if (item.fullImage) return `/outfits/${item.fullImage}`;
@@ -24,6 +28,7 @@ function outfitPreviewSrc(item: ShopItem): string | null {
 }
 
 export default function ShopPage() {
+  const { prefs } = useAraPrefs();
   const [shop, setShop] = useState<ShopState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -88,6 +93,10 @@ export default function ShopPage() {
 
   const outfits = (shop?.items ?? [])
     .filter((item) => item.slot === "outfit")
+    .filter((item) => {
+      const g = item.gender || "girl";
+      return g === "any" || g === prefs.gender;
+    })
     .slice()
     .sort((a, b) => {
       // OG Ara (free starter) always first.

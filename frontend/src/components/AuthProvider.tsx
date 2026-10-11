@@ -13,12 +13,18 @@ import type { Session, User } from "@supabase/supabase-js";
 import { clearCachedLookSrc } from "@/lib/araOutfitCache";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 
+export type SignUpResult = {
+  error: string | null;
+  /** True when Supabase requires clicking the confirm link in email. */
+  needsEmailConfirm: boolean;
+};
+
 type AuthContextValue = {
   user: User | null;
   session: Session | null;
   isLoading: boolean;
   accessToken: string | null;
-  signUp: (email: string, password: string) => Promise<string | null>;
+  signUp: (email: string, password: string) => Promise<SignUpResult>;
   signIn: (email: string, password: string) => Promise<string | null>;
   signOut: () => Promise<void>;
 };
@@ -61,14 +67,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = useCallback(async (email: string, password: string) => {
     try {
-      const { error } = await supabase.auth.signUp({ email, password });
-      return error?.message ?? null;
+      const { data, error } = await supabase.auth.signUp({ email, password });
+      if (error) {
+        return { error: error.message, needsEmailConfirm: false };
+      }
+      // No session yet → email confirmation is required before they can sign in.
+      const needsEmailConfirm = !data.session;
+      return { error: null, needsEmailConfirm };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       if (/failed to fetch|networkerror|load failed/i.test(msg)) {
-        return "Can't reach Supabase right now. Check that your project is active (not paused) and NEXT_PUBLIC_SUPABASE_URL is correct.";
+        return {
+          error:
+            "Can't reach Supabase right now. Check that your project is active (not paused) and NEXT_PUBLIC_SUPABASE_URL is correct.",
+          needsEmailConfirm: false,
+        };
       }
-      return msg || "Sign up failed.";
+      return { error: msg || "Sign up failed.", needsEmailConfirm: false };
     }
   }, []);
 

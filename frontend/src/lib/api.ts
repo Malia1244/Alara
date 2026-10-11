@@ -10,6 +10,16 @@ export type Subject = {
   created_at: string;
 };
 
+export type CalendarEvent = {
+  id: string;
+  title: string;
+  event_date: string;
+  notes: string;
+  subject_id: string | null;
+  subject_name: string | null;
+  created_at: string;
+};
+
 export type LearningEntry = {
   id: string;
   subject_id: string | null;
@@ -65,6 +75,8 @@ export type ShopItem = {
   slot: string;
   /** Hair · top · bottoms · shoes breakdown for complete looks */
   pieces?: string | null;
+  /** girl / boy outfit filter; themes use any */
+  gender?: "girl" | "boy" | "any" | null;
 };
 
 export type ShopState = {
@@ -599,5 +611,56 @@ export async function deleteLoungeMessage(messageId: string): Promise<void> {
   });
   if (!res.ok) {
     throw new Error(await loungeError(res, `Couldn't remove message (${res.status})`));
+  }
+}
+
+async function calendarError(res: Response, fallback: string): Promise<string> {
+  const body = await res.json().catch(() => null);
+  const detail = body?.detail;
+  if (typeof detail === "string") return detail;
+  return fallback;
+}
+
+export async function fetchCalendarEvents(): Promise<CalendarEvent[]> {
+  const res = await apiFetch("/calendar/events");
+  if (!res.ok) {
+    throw new Error(
+      await calendarError(res, `Couldn't load events (${res.status})`)
+    );
+  }
+  return res.json();
+}
+
+export async function createCalendarEvent(input: {
+  title: string;
+  event_date: string;
+  notes?: string;
+  subject_id?: string | null;
+}): Promise<CalendarEvent> {
+  const res = await apiFetch("/calendar/events", {
+    method: "POST",
+    body: JSON.stringify({
+      title: input.title,
+      event_date: input.event_date,
+      notes: input.notes ?? "",
+      subject_id: input.subject_id ?? null,
+    }),
+  });
+  if (!res.ok) {
+    throw new Error(
+      await calendarError(res, `Couldn't save event (${res.status})`)
+    );
+  }
+  return res.json();
+}
+
+export async function deleteCalendarEvent(eventId: string): Promise<void> {
+  const res = await apiFetch(`/calendar/events/${eventId}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) {
+    throw new Error(
+      await calendarError(res, `Couldn't remove event (${res.status})`)
+    );
   }
 }

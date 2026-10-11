@@ -81,6 +81,7 @@ export default function AraPrefsControls({
     setStudyReminders,
     setReminderHour,
     setTheme,
+    setGender,
   } = useAraPrefs();
   const [shop, setShop] = useState<ShopState | null>(null);
   const [busyTheme, setBusyTheme] = useState<UiTheme | null>(null);
@@ -169,6 +170,36 @@ export default function AraPrefsControls({
         </p>
       )}
       <div className="flex flex-col gap-2.5">
+        <div className="flex flex-col gap-1.5">
+          <p className="text-xs font-medium text-stone-600">Ara</p>
+          <div className="grid grid-cols-2 gap-1.5">
+            {(
+              [
+                { id: "girl" as const, label: "Girl" },
+                { id: "boy" as const, label: "Boy" },
+              ] as const
+            ).map((opt) => {
+              const active = prefs.gender === opt.id;
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => setGender(opt.id)}
+                  className={`rounded-lg px-2 py-2 text-[11px] font-semibold transition ${
+                    active
+                      ? "bg-brand text-white"
+                      : "border border-border bg-white text-stone-600 hover:border-brand/40"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-[10px] leading-snug text-muted">
+            Pick girl or boy Ara — shop outfits match the version you choose.
+          </p>
+        </div>
         <ToggleRow
           id="ara-motion-toggle"
           label="Animations"

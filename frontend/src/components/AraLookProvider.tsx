@@ -9,9 +9,11 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useAraPrefs } from "@/components/AraPrefsProvider";
 import { fetchShopState } from "@/lib/api";
 import {
   DEFAULT_LOOK_SRC,
+  defaultLookSrc,
   getActiveLookSrc,
   subscribeLookSrc,
   syncLookFromShop,
@@ -32,6 +34,7 @@ const AraLookContext = createContext<AraLookContextValue>({
  * that caused races where some pages briefly showed OG then swapped.
  */
 export function AraLookProvider({ children }: { children: ReactNode }) {
+  const { prefs } = useAraPrefs();
   const [lookSrc, setLookSrc] = useState(DEFAULT_LOOK_SRC);
   const [ready, setReady] = useState(false);
 
@@ -47,7 +50,7 @@ export function AraLookProvider({ children }: { children: ReactNode }) {
     fetchShopState()
       .then((data) => {
         if (cancelled) return;
-        const src = syncLookFromShop(data);
+        const src = syncLookFromShop(data, prefs.gender);
         setLookSrc(src);
       })
       .catch(() => {
@@ -56,7 +59,12 @@ export function AraLookProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [prefs.gender]);
+
+  useEffect(() => {
+    // Gender flip writes the default look in prefs; pick it up here immediately.
+    setLookSrc(getActiveLookSrc() || defaultLookSrc(prefs.gender));
+  }, [prefs.gender]);
 
   const value = useMemo(
     () => ({ lookSrc, ready }),
