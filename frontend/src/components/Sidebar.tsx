@@ -22,14 +22,14 @@ import {
 
 const NAV_ITEMS = [
   { href: "/", label: "Home", Icon: IconHome },
-  { href: "/calendar", label: "Calendar", Icon: IconCalendar },
-  { href: "/lounge", label: "Lounge", Icon: IconLounge },
   { href: "/timed-study", label: "Timed Study", Icon: IconTimer },
+  { href: "/teach-ara", label: "Teach Ara", Icon: IconTeach },
   { href: "/homework", label: "Homework", Icon: IconHomework },
   { href: "/progress", label: "Progress", Icon: IconProgress },
   { href: "/ara", label: "Outfit", Icon: IconCloset },
-  { href: "/teach-ara", label: "Teach / Voice", Icon: IconTeach },
   { href: "/shop", label: "Shop", Icon: IconShop },
+  { href: "/calendar", label: "Calendar", Icon: IconCalendar },
+  { href: "/lounge", label: "Lounge", Icon: IconLounge },
 ] as const;
 
 export default function Sidebar() {

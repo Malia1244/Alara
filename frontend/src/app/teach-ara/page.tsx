@@ -3,6 +3,7 @@
 import { FormEvent, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import AraAvatar from "@/components/AraAvatar";
 import CharacterStage from "@/components/CharacterStage";
 import { CutFlower } from "@/components/CutFlowers";
 import { IconTeach } from "@/components/nav-icons";
@@ -582,35 +583,52 @@ function TeachAraInner() {
             </div>
 
             <div className="flex flex-1 flex-col gap-3 overflow-y-auto px-4 py-4">
-              {messages.map((line, index) => (
-                <div
-                  key={`${line.role}-${index}-${line.content.slice(0, 12)}`}
-                  className={`max-w-[85%] rounded-xl px-3.5 py-2.5 text-sm leading-relaxed ${
-                    line.role === "user"
-                      ? "ml-auto bg-brand text-white"
-                      : "mr-auto border border-border bg-panel text-ink"
-                  }`}
-                >
-                  {line.role === "ara" && line.status && line.status !== "ask" && (
-                    <span
-                      className={`mb-1 block text-[10px] font-bold uppercase tracking-wide ${
-                        line.status === "understood"
-                          ? "text-brand"
-                          : line.status === "confused"
-                            ? "text-accent"
-                            : "text-amber"
-                      }`}
-                    >
-                      {line.status === "understood"
-                        ? "Got it"
-                        : line.status === "confused"
-                          ? "Confused"
-                          : "Needs clarity"}
-                    </span>
-                  )}
-                  {line.content}
-                </div>
-              ))}
+              {messages.map((line, index) =>
+                line.role === "user" ? (
+                  <div
+                    key={`${line.role}-${index}-${line.content.slice(0, 12)}`}
+                    className="ml-auto max-w-[85%] rounded-xl bg-brand px-3.5 py-2.5 text-sm leading-relaxed text-white"
+                  >
+                    {line.content}
+                  </div>
+                ) : (
+                  <div
+                    key={`${line.role}-${index}-${line.content.slice(0, 12)}`}
+                    className="mr-auto flex max-w-[92%] items-end gap-2"
+                  >
+                    <div className="flex shrink-0 flex-col items-center gap-0.5 pb-0.5">
+                      <AraAvatar
+                        size={44}
+                        pose={poseForStatus(line.status)}
+                        motion="none"
+                        priority={index < 2}
+                      />
+                      {line.status && (
+                        <span
+                          className={`max-w-[3.5rem] text-center text-[9px] font-bold uppercase leading-tight tracking-wide ${
+                            line.status === "understood"
+                              ? "text-brand"
+                              : line.status === "confused"
+                                ? "text-accent"
+                                : "text-amber"
+                          }`}
+                        >
+                          {line.status === "understood"
+                            ? "Got it"
+                            : line.status === "confused"
+                              ? "Huh?"
+                              : line.status === "ask"
+                                ? "Listening"
+                                : "Almost"}
+                        </span>
+                      )}
+                    </div>
+                    <div className="min-w-0 rounded-xl border border-border bg-panel px-3.5 py-2.5 text-sm leading-relaxed text-ink">
+                      {line.content}
+                    </div>
+                  </div>
+                )
+              )}
               {listening && interim && (
                 <p className="ml-auto max-w-[85%] rounded-xl bg-brand/20 px-3.5 py-2 text-sm italic text-brand-ink">
                   {interim}…
