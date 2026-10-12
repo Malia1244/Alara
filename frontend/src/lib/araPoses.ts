@@ -53,6 +53,7 @@ export function isOgLookSrc(src: string | null | undefined): boolean {
   return (
     src.endsWith("look-floral-cottage.png") ||
     src.endsWith("look-floral-cottage-boy.png") ||
+    src.endsWith("look-boy-zip-og.png") ||
     src.includes("/ara/poses/")
   );
 }

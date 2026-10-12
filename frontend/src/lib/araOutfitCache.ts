@@ -7,7 +7,7 @@ const CHANGE_EVENT = "alara-outfit-changed";
 
 /** OG Ara = floral cottage dress (PNG). Keep in sync with backend classic art. */
 export const GIRL_DEFAULT_LOOK_SRC = "/outfits/looks/look-floral-cottage.png";
-export const BOY_DEFAULT_LOOK_SRC = "/outfits/looks/look-floral-cottage-boy.png";
+export const BOY_DEFAULT_LOOK_SRC = "/outfits/looks/look-boy-zip-og.png";
 export const DEFAULT_LOOK_SRC = GIRL_DEFAULT_LOOK_SRC;
 export const OG_OUTFIT_ID = "look-lavender-soft";
 export const OG_BOY_OUTFIT_ID = "look-lavender-soft-boy";

@@ -118,11 +118,11 @@ SHOP_CATALOG = [
         "id": "look-lavender-soft-boy",
         "name": "OG Ara (Boy)",
         "emoji": "💙",
-        "fullImage": "looks/look-floral-cottage-boy.png",
+        "fullImage": "looks/look-boy-zip-og.png",
         "price": 0,
         "slot": "outfit",
         "gender": "boy",
-        "pieces": "Blue striped windbreaker · Studded belt · Baggy jeans · Black sneakers",
+        "pieces": "Blue zip-up windbreaker · Studded belt · Baggy jeans · Black sneakers",
     },
     {
         "id": "look-boy-cream-hoodie",

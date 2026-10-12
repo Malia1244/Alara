@@ -71,7 +71,9 @@ export default function AraAvatar({
     ? araPoseSrc(gender, pose)
     : gender === "boy" && activeLook.endsWith("look-floral-cottage.png")
       ? defaultLookSrc("boy")
-      : gender === "girl" && activeLook.endsWith("look-floral-cottage-boy.png")
+      : gender === "girl" &&
+          (activeLook.endsWith("look-floral-cottage-boy.png") ||
+            activeLook.endsWith("look-boy-zip-og.png"))
         ? defaultLookSrc("girl")
         : activeLook;
 
