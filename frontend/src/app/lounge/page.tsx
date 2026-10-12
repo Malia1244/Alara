@@ -216,10 +216,31 @@ export default function LoungePage() {
   const listRef = useRef<HTMLDivElement | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const stickToBottom = useRef(true);
+  const windowScrollLock = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     setNameDraft(displayName);
   }, [displayName]);
+
+  /** Stop the browser from yanking the page when the composer is focused. */
+  function preserveWindowScroll() {
+    const lock = { x: window.scrollX, y: window.scrollY };
+    windowScrollLock.current = lock;
+    const restore = () => {
+      if (!windowScrollLock.current) return;
+      window.scrollTo(windowScrollLock.current.x, windowScrollLock.current.y);
+    };
+    restore();
+    requestAnimationFrame(() => {
+      restore();
+      requestAnimationFrame(restore);
+    });
+    window.setTimeout(restore, 50);
+    window.setTimeout(() => {
+      restore();
+      windowScrollLock.current = null;
+    }, 120);
+  }
 
   const threads = useMemo(() => threadMessages(messages), [messages]);
 
@@ -316,8 +337,8 @@ export default function LoungePage() {
   }
 
   return (
-    <div className="flex flex-1 justify-center px-4 py-8 sm:px-8 sm:py-10">
-      <main className="flex w-full max-w-3xl flex-col gap-5">
+    <div className="flex flex-1 justify-center px-4 py-8 sm:px-8 sm:py-10 [overflow-anchor:none]">
+      <main className="flex w-full max-w-3xl flex-col gap-5 [overflow-anchor:none]">
         <header className="animate-rise flex items-start gap-3">
           <span className="mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-soft text-brand">
             <IconLounge className="h-6 w-6" />
@@ -386,8 +407,8 @@ export default function LoungePage() {
           )}
         </section>
 
-        <section className="animate-rise flex min-h-[28rem] flex-col rounded-2xl border border-border bg-surface">
-          <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
+        <section className="flex h-[min(70vh,36rem)] flex-col overflow-hidden rounded-2xl border border-border bg-surface [overflow-anchor:none]">
+          <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-3">
             <p className="text-xs font-semibold uppercase tracking-wide text-muted">
               Assignment help
             </p>
@@ -396,7 +417,7 @@ export default function LoungePage() {
 
           <div
             ref={listRef}
-            className="flex max-h-[32rem] flex-1 flex-col gap-4 overflow-y-auto px-4 py-4"
+            className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain px-4 py-4 [overflow-anchor:none]"
             onScroll={(e) => {
               const el = e.currentTarget;
               const remaining =
@@ -434,7 +455,8 @@ export default function LoungePage() {
 
           <form
             onSubmit={onSubmit}
-            className="border-t border-border p-3 sm:p-4"
+            className="shrink-0 border-t border-border p-3 sm:p-4"
+            onFocusCapture={preserveWindowScroll}
           >
             {replyTo && (
               <div className="mb-3 flex items-start justify-between gap-3 rounded-xl border border-brand/25 bg-brand-soft/60 px-3 py-2">
@@ -504,6 +526,7 @@ export default function LoungePage() {
                 id="lounge-input"
                 value={draft}
                 onChange={(e) => setDraft(e.target.value.slice(0, BODY_MAX))}
+                onFocus={preserveWindowScroll}
                 onKeyDown={(e) => {
                   if (e.key !== "Enter" || e.shiftKey) return;
                   e.preventDefault();
