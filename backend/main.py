@@ -393,12 +393,12 @@ SHOP_CATALOG = [
     },
     {
         "id": "theme-sleek",
-        "name": "Sleek Mode",
-        "emoji": "🖤",
+        "name": "Night Glow",
+        "emoji": "🌙",
         "price": 150,
         "slot": "theme",
         "gender": "any",
-        "pieces": "Clean gray & indigo app look — unlock with points",
+        "pieces": "Dark botanical night look · warm gold glow — unlock with points",
     },
     {
         "id": "theme-playful",

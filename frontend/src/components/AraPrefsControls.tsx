@@ -66,7 +66,7 @@ const THEMES: {
   priceLabel: string;
 }[] = [
   { id: "original", label: "Original", priceLabel: "Free" },
-  { id: "sleek", label: "Sleek", priceLabel: "150 pts" },
+  { id: "sleek", label: "Night Glow", priceLabel: "150 pts" },
   { id: "playful", label: "Playful", priceLabel: "150 pts" },
 ];
 
@@ -293,7 +293,7 @@ export default function AraPrefsControls({
             <p className="text-[10px] font-medium text-accent">{themeError}</p>
           )}
           <p className="text-[10px] leading-snug text-muted">
-            Unlock Sleek or Playful with shop points, then tap to use.
+            Unlock Night Glow or Playful with shop points, then tap to use.
           </p>
         </div>
       </div>

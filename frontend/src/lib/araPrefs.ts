@@ -1,3 +1,4 @@
+/** "sleek" is the Night Glow theme (id kept for owned unlocks / local prefs). */
 export type UiTheme = "original" | "sleek" | "playful";
 
 /** Shop item ids that unlock paid UI themes. */
