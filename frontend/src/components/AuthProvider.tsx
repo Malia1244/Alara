@@ -129,9 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         data: { display_name: cleaned },
       });
       if (error) return error.message;
-      if (data.session) {
-        setSession(data.session);
-      } else if (data.user) {
+      if (data.user) {
         setSession((prev) =>
           prev ? { ...prev, user: data.user } : prev
         );

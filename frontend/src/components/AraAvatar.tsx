@@ -65,17 +65,21 @@ export default function AraAvatar({
     getActiveLookSrc() ||
     defaultLookSrc(gender);
 
-  // Custom shop outfits stay as full portraits; OG (or no outfit) uses pose sheets.
-  const usePoseSheet = !lookSrc && isOgLookSrc(activeLook);
-  const preferred = usePoseSheet
-    ? araPoseSrc(gender, pose)
-    : gender === "boy" && activeLook.endsWith("look-floral-cottage.png")
-      ? defaultLookSrc("boy")
-      : gender === "girl" &&
-          (activeLook.endsWith("look-floral-cottage-boy.png") ||
-            activeLook.endsWith("look-boy-zip-og.png"))
-        ? defaultLookSrc("girl")
-        : activeLook;
+  const isBoyAsset = (src: string) =>
+    src.includes("/ara/poses/boy/") ||
+    /look-boy-|cottage-boy|zip-og/i.test(src);
+
+  const lookMatchesGender =
+    gender === "boy" ? isBoyAsset(activeLook) : !isBoyAsset(activeLook);
+
+  // Custom shop outfits stay as full portraits; OG / wrong-gender cache uses pose sheets.
+  const usePoseSheet =
+    !lookSrc && (isOgLookSrc(activeLook) || !lookMatchesGender);
+  const preferred = lookSrc
+    ? lookSrc
+    : usePoseSheet
+      ? araPoseSrc(gender, pose)
+      : activeLook;
 
   const [src, setSrc] = useState(preferred);
   const ready = Boolean(lookSrc) || look.ready || Boolean(shopLookSrc);
@@ -115,9 +119,12 @@ export default function AraAvatar({
         onError={() => {
           const poseFallback = araPoseSrc(gender, "wave");
           const og = defaultLookSrc(gender);
+          // Never snap a boy Ara selection back to the girl OG.
           if (src !== poseFallback) setSrc(poseFallback);
           else if (src !== og) setSrc(og);
-          else if (src !== DEFAULT_LOOK_SRC) setSrc(DEFAULT_LOOK_SRC);
+          else if (gender === "girl" && src !== DEFAULT_LOOK_SRC) {
+            setSrc(DEFAULT_LOOK_SRC);
+          }
         }}
       />
     </div>

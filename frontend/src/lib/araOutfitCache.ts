@@ -50,6 +50,10 @@ function migrateLookSrc(raw: string): string {
   ) {
     return DEFAULT_LOOK_SRC;
   }
+  // Old boy OG filename → current blue zip-up asset.
+  if (raw.includes("look-floral-cottage-boy.png")) {
+    return BOY_DEFAULT_LOOK_SRC;
+  }
   // All shop looks are transparent PNGs now.
   if (raw.includes("/outfits/looks/") && /\.jpg$/i.test(raw)) {
     return raw.replace(/\.jpg$/i, ".png");
