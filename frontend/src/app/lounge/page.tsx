@@ -213,7 +213,7 @@ export default function LoungePage() {
   const [nameDraft, setNameDraft] = useState("");
   const [nameBusy, setNameBusy] = useState(false);
   const [nameMsg, setNameMsg] = useState<string | null>(null);
-  const bottomRef = useRef<HTMLDivElement | null>(null);
+  const listRef = useRef<HTMLDivElement | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const stickToBottom = useRef(true);
 
@@ -226,7 +226,20 @@ export default function LoungePage() {
   const loadMessages = useCallback(async (quiet = false) => {
     try {
       const data = await fetchLoungeMessages();
-      setMessages(data);
+      setMessages((prev) => {
+        if (
+          prev.length === data.length &&
+          prev.every(
+            (row, i) =>
+              row.id === data[i]?.id &&
+              row.body === data[i]?.body &&
+              row.image_url === data[i]?.image_url
+          )
+        ) {
+          return prev;
+        }
+        return data;
+      });
       if (!quiet) setError(null);
     } catch (err) {
       if (!quiet) {
@@ -249,7 +262,9 @@ export default function LoungePage() {
 
   useEffect(() => {
     if (!stickToBottom.current) return;
-    bottomRef.current?.scrollIntoView({ block: "end" });
+    const el = listRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
   }, [messages]);
 
   async function onPickImage(file: File | null) {
@@ -380,6 +395,7 @@ export default function LoungePage() {
           </div>
 
           <div
+            ref={listRef}
             className="flex max-h-[32rem] flex-1 flex-col gap-4 overflow-y-auto px-4 py-4"
             onScroll={(e) => {
               const el = e.currentTarget;
@@ -414,7 +430,6 @@ export default function LoungePage() {
                 ))}
               </div>
             ))}
-            <div ref={bottomRef} />
           </div>
 
           <form
@@ -489,6 +504,11 @@ export default function LoungePage() {
                 id="lounge-input"
                 value={draft}
                 onChange={(e) => setDraft(e.target.value.slice(0, BODY_MAX))}
+                onKeyDown={(e) => {
+                  if (e.key !== "Enter" || e.shiftKey) return;
+                  e.preventDefault();
+                  e.currentTarget.form?.requestSubmit();
+                }}
                 onPaste={(e) => {
                   const items = e.clipboardData?.items;
                   if (!items) return;
@@ -505,8 +525,8 @@ export default function LoungePage() {
                 maxLength={BODY_MAX}
                 placeholder={
                   replyTo
-                    ? "Write how you would do it…"
-                    : "Ask how to do this, or paste a photo of the worksheet…"
+                    ? "Write how you would do it… (Enter to send)"
+                    : "Ask how to do this… (Enter to send, Shift+Enter for a new line)"
                 }
                 className="min-h-[2.75rem] flex-1 resize-none rounded-xl border border-border bg-white px-3.5 py-2.5 text-sm text-ink outline-none ring-brand/30 focus:ring-2"
                 disabled={sending}

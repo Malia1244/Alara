@@ -1,4 +1,5 @@
 import CharacterStage from "@/components/CharacterStage";
+import { BOY_DEFAULT_LOOK_SRC } from "@/lib/araOutfitCache";
 import { araPoseSrc, type AraPose } from "@/lib/araPoses";
 
 type Props = {
@@ -31,7 +32,7 @@ export default function AuthAraPair({
         pad="md"
         label="Boy Ara"
         gender="boy"
-        lookSrc={araPoseSrc("boy", boyPose)}
+        lookSrc={BOY_DEFAULT_LOOK_SRC}
       />
     </div>
   );
