@@ -28,6 +28,43 @@ type Thread = {
   replies: LoungeMessage[];
 };
 
+type DayBucket = {
+  key: string;
+  label: string;
+  threads: Thread[];
+};
+
+function startOfDay(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function dayKey(iso: string) {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "unknown";
+  const local = startOfDay(date);
+  const y = local.getFullYear();
+  const m = String(local.getMonth() + 1).padStart(2, "0");
+  const d = String(local.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function dayLabel(iso: string) {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  const today = startOfDay(new Date());
+  const msgDay = startOfDay(date);
+  const diffDays = Math.round(
+    (today.getTime() - msgDay.getTime()) / (24 * 60 * 60 * 1000)
+  );
+  if (diffDays === 0) return "Today";
+  if (diffDays === 1) return "Yesterday";
+  return date.toLocaleDateString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
+}
+
 function formatTime(iso: string) {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "";
@@ -35,6 +72,21 @@ function formatTime(iso: string) {
     hour: "numeric",
     minute: "2-digit",
   });
+}
+
+function formatStamp(iso: string) {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  const today = startOfDay(new Date());
+  const msgDay = startOfDay(date);
+  const sameDay = today.getTime() === msgDay.getTime();
+  const time = formatTime(iso);
+  if (sameDay) return time;
+  const shortDate = date.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
+  return `${shortDate} · ${time}`;
 }
 
 async function fileToBase64(file: File): Promise<PendingImage> {
@@ -109,6 +161,24 @@ function threadMessages(messages: LoungeMessage[]): Thread[] {
   return threads;
 }
 
+function groupThreadsByDay(threads: Thread[]): DayBucket[] {
+  const buckets: DayBucket[] = [];
+  for (const thread of threads) {
+    const key = dayKey(thread.parent.created_at);
+    const last = buckets[buckets.length - 1];
+    if (last && last.key === key) {
+      last.threads.push(thread);
+    } else {
+      buckets.push({
+        key,
+        label: dayLabel(thread.parent.created_at),
+        threads: [thread],
+      });
+    }
+  }
+  return buckets;
+}
+
 function Bubble({
   message,
   indented,
@@ -135,14 +205,14 @@ function Bubble({
           }`}
         >
           {message.is_mine ? "You" : message.author_label}
-          {indented ? " · answer" : ""}
+          {indented ? " · reply" : ""}
         </p>
         <p
-          className={`text-[10px] ${
+          className={`shrink-0 text-[10px] ${
             message.is_mine ? "text-white/70" : "text-muted"
           }`}
         >
-          {formatTime(message.created_at)}
+          {formatStamp(message.created_at)}
         </p>
       </div>
       {message.reply_to_preview && !indented && (
@@ -179,11 +249,13 @@ function Bubble({
         <button
           type="button"
           onClick={() => onReply(message)}
-          className={`text-[11px] font-semibold hover:underline ${
-            message.is_mine ? "text-white/80" : "text-brand"
+          className={`rounded-md px-2 py-0.5 text-[11px] font-semibold transition ${
+            message.is_mine
+              ? "bg-white/15 text-white hover:bg-white/25"
+              : "bg-brand-soft text-brand-ink hover:brightness-105"
           }`}
         >
-          Answer
+          Reply
         </button>
         {message.is_mine && (
           <button
@@ -215,6 +287,7 @@ export default function LoungePage() {
   const [nameMsg, setNameMsg] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
+  const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const stickToBottom = useRef(true);
   const windowScrollLock = useRef<{ x: number; y: number } | null>(null);
 
@@ -243,6 +316,15 @@ export default function LoungePage() {
   }
 
   const threads = useMemo(() => threadMessages(messages), [messages]);
+  const dayBuckets = useMemo(() => groupThreadsByDay(threads), [threads]);
+
+  function handleReply(message: LoungeMessage) {
+    setReplyTo(message);
+    requestAnimationFrame(() => {
+      inputRef.current?.focus();
+      preserveWindowScroll();
+    });
+  }
 
   const loadMessages = useCallback(async (quiet = false) => {
     try {
@@ -433,21 +515,30 @@ export default function LoungePage() {
                 No questions yet. Attach a photo and ask how to start.
               </p>
             )}
-            {threads.map(({ parent, replies }) => (
-              <div key={parent.id} className="flex flex-col gap-2">
-                <Bubble
-                  message={parent}
-                  onReply={setReplyTo}
-                  onDelete={(id) => void onDelete(id)}
-                />
-                {replies.map((reply) => (
-                  <Bubble
-                    key={reply.id}
-                    message={reply}
-                    indented
-                    onReply={setReplyTo}
-                    onDelete={(id) => void onDelete(id)}
-                  />
+            {dayBuckets.map((day) => (
+              <div key={day.key} className="flex flex-col gap-3">
+                <div className="sticky top-0 z-[1] flex justify-center py-1">
+                  <span className="rounded-full border border-border bg-panel/95 px-3 py-1 text-[11px] font-semibold text-muted shadow-sm backdrop-blur-sm">
+                    {day.label}
+                  </span>
+                </div>
+                {day.threads.map(({ parent, replies }) => (
+                  <div key={parent.id} className="flex flex-col gap-2">
+                    <Bubble
+                      message={parent}
+                      onReply={handleReply}
+                      onDelete={(id) => void onDelete(id)}
+                    />
+                    {replies.map((reply) => (
+                      <Bubble
+                        key={reply.id}
+                        message={reply}
+                        indented
+                        onReply={handleReply}
+                        onDelete={(id) => void onDelete(id)}
+                      />
+                    ))}
+                  </div>
                 ))}
               </div>
             ))}
@@ -462,7 +553,8 @@ export default function LoungePage() {
               <div className="mb-3 flex items-start justify-between gap-3 rounded-xl border border-brand/25 bg-brand-soft/60 px-3 py-2">
                 <div className="min-w-0">
                   <p className="text-[11px] font-semibold uppercase tracking-wide text-brand">
-                    Answering {replyTo.is_mine ? "yourself" : replyTo.author_label}
+                    Replying to{" "}
+                    {replyTo.is_mine ? "yourself" : replyTo.author_label}
                   </p>
                   <p className="mt-0.5 truncate text-xs text-muted">
                     {replyTo.body || "Photo question"}
@@ -524,6 +616,7 @@ export default function LoungePage() {
               />
               <textarea
                 id="lounge-input"
+                ref={inputRef}
                 value={draft}
                 onChange={(e) => setDraft(e.target.value.slice(0, BODY_MAX))}
                 onFocus={preserveWindowScroll}
@@ -548,7 +641,7 @@ export default function LoungePage() {
                 maxLength={BODY_MAX}
                 placeholder={
                   replyTo
-                    ? "Write how you would do it… (Enter to send)"
+                    ? "Write your reply… (Enter to send)"
                     : "Ask how to do this… (Enter to send, Shift+Enter for a new line)"
                 }
                 className="min-h-[2.75rem] flex-1 resize-none rounded-xl border border-border bg-white px-3.5 py-2.5 text-sm text-ink outline-none ring-brand/30 focus:ring-2"
@@ -559,7 +652,7 @@ export default function LoungePage() {
                 disabled={sending || (!draft.trim() && !pendingImage)}
                 className="shrink-0 self-end rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-ink disabled:opacity-50"
               >
-                {sending ? "Sending…" : replyTo ? "Answer" : "Ask"}
+                {sending ? "Sending…" : replyTo ? "Reply" : "Ask"}
               </button>
             </div>
             <p className="mt-1.5 text-right text-[11px] text-muted">
