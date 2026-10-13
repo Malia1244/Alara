@@ -305,9 +305,11 @@ export default function LoungePage() {
   const [nameDraft, setNameDraft] = useState("");
   const [nameBusy, setNameBusy] = useState(false);
   const [nameMsg, setNameMsg] = useState<string | null>(null);
+  const [emojiOpen, setEmojiOpen] = useState(false);
   const listRef = useRef<HTMLDivElement | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
+  const emojiPanelRef = useRef<HTMLDivElement | null>(null);
   const stickToBottom = useRef(true);
   const windowScrollLock = useRef<{ x: number; y: number } | null>(null);
 
@@ -355,6 +357,7 @@ export default function LoungePage() {
       BODY_MAX
     );
     setDraft(next);
+    setEmojiOpen(false);
     requestAnimationFrame(() => {
       if (!el) return;
       el.focus();
@@ -363,6 +366,22 @@ export default function LoungePage() {
       preserveWindowScroll();
     });
   }
+
+  useEffect(() => {
+    if (!emojiOpen) return;
+    function onPointerDown(event: MouseEvent | TouchEvent) {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (emojiPanelRef.current?.contains(target)) return;
+      setEmojiOpen(false);
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("touchstart", onPointerDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("touchstart", onPointerDown);
+    };
+  }, [emojiOpen]);
 
   const loadMessages = useCallback(async (quiet = false) => {
     try {
@@ -641,28 +660,6 @@ export default function LoungePage() {
             >
               {pendingImage ? "Change photo" : "Add assignment photo"}
             </button>
-            <div className="mb-2 flex items-center gap-2">
-              <span className="text-[11px] font-semibold uppercase tracking-wide text-muted">
-                Emoji
-              </span>
-              {LOUNGE_EMOJIS.map((emoji) => (
-                <button
-                  key={emoji.id}
-                  type="button"
-                  disabled={sending || draft.length + emoji.shortcode.length > BODY_MAX}
-                  onClick={() => insertEmoji(emoji.shortcode)}
-                  title={emoji.shortcode}
-                  className="rounded-lg border border-border bg-panel p-1 transition hover:border-brand/40 hover:bg-brand-soft disabled:opacity-50"
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={emoji.src}
-                    alt={emoji.label}
-                    className="h-8 w-8 rounded-md object-cover"
-                  />
-                </button>
-              ))}
-            </div>
             <div className="flex gap-2">
               <input
                 ref={fileRef}
@@ -674,6 +671,54 @@ export default function LoungePage() {
                   e.target.value = "";
                 }}
               />
+              <div className="relative shrink-0 self-end">
+                <button
+                  type="button"
+                  disabled={sending}
+                  aria-expanded={emojiOpen}
+                  aria-label="Open emoji picker"
+                  onClick={() => setEmojiOpen((open) => !open)}
+                  className={`flex h-11 w-11 items-center justify-center rounded-xl border text-lg transition disabled:opacity-50 ${
+                    emojiOpen
+                      ? "border-brand bg-brand-soft"
+                      : "border-border bg-panel hover:border-brand/40 hover:bg-brand-soft"
+                  }`}
+                >
+                  ☺
+                </button>
+                {emojiOpen && (
+                  <div
+                    ref={emojiPanelRef}
+                    className="absolute bottom-[calc(100%+0.5rem)] left-0 z-20 w-56 rounded-2xl border border-border bg-surface p-3 shadow-[0_16px_40px_-18px_rgba(0,0,0,0.35)]"
+                  >
+                    <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted">
+                      Lounge emoji
+                    </p>
+                    <div className="grid grid-cols-4 gap-2">
+                      {LOUNGE_EMOJIS.map((emoji) => (
+                        <button
+                          key={emoji.id}
+                          type="button"
+                          disabled={
+                            sending ||
+                            draft.length + emoji.shortcode.length > BODY_MAX
+                          }
+                          onClick={() => insertEmoji(emoji.shortcode)}
+                          title={`${emoji.label} (${emoji.shortcode})`}
+                          className="rounded-xl border border-border bg-panel p-1.5 transition hover:border-brand/40 hover:bg-brand-soft disabled:opacity-50"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={emoji.src}
+                            alt={emoji.label}
+                            className="h-10 w-10 rounded-lg object-cover"
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
               <textarea
                 id="lounge-input"
                 ref={inputRef}

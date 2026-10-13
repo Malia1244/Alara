@@ -1,14 +1,22 @@
-/** Custom Lounge emoji shortcodes → public image paths. */
-export const LOUNGE_EMOJIS = [
-  {
-    id: "malia",
-    shortcode: ":malia:",
-    src: "/emoji/malia.png",
-    label: "Malia",
-  },
-] as const;
+/**
+ * Custom Lounge emojis.
+ * To add more: drop a square PNG in /public/emoji/, then add an entry here.
+ */
+export type LoungeEmoji = {
+  id: string;
+  shortcode: string;
+  src: string;
+  label: string;
+};
 
-export type LoungeEmoji = (typeof LOUNGE_EMOJIS)[number];
+export const LOUNGE_EMOJIS: LoungeEmoji[] = [
+  {
+    id: "sideeye",
+    shortcode: ":sideeye:",
+    src: "/emoji/sideeye.png",
+    label: "Side eye",
+  },
+];
 
 const SHORTCODE_PATTERN = /(:[a-z0-9_]+:)/gi;
 
