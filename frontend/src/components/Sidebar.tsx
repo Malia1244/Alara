@@ -20,16 +20,34 @@ import {
   IconTimer,
 } from "@/components/nav-icons";
 
-const NAV_ITEMS = [
-  { href: "/", label: "Home", Icon: IconHome },
-  { href: "/timed-study", label: "Timed Study", Icon: IconTimer },
-  { href: "/teach-ara", label: "Teach Ara", Icon: IconTeach },
-  { href: "/homework", label: "Homework", Icon: IconHomework },
-  { href: "/progress", label: "Progress", Icon: IconProgress },
-  { href: "/ara", label: "Outfit", Icon: IconCloset },
-  { href: "/shop", label: "Shop", Icon: IconShop },
-  { href: "/calendar", label: "Calendar", Icon: IconCalendar },
-  { href: "/lounge", label: "Lounge", Icon: IconLounge },
+const NAV_SECTIONS = [
+  {
+    label: "Study",
+    items: [
+      { href: "/", label: "Home", Icon: IconHome },
+      { href: "/timed-study", label: "Timed Study", Icon: IconTimer },
+      { href: "/teach-ara", label: "Teach Ara", Icon: IconTeach },
+      { href: "/homework", label: "Homework", Icon: IconHomework },
+    ],
+  },
+  {
+    label: "Track",
+    items: [
+      { href: "/progress", label: "Progress", Icon: IconProgress },
+      { href: "/calendar", label: "Calendar", Icon: IconCalendar },
+    ],
+  },
+  {
+    label: "Ara",
+    items: [
+      { href: "/ara", label: "Outfit", Icon: IconCloset },
+      { href: "/shop", label: "Shop", Icon: IconShop },
+    ],
+  },
+  {
+    label: "Together",
+    items: [{ href: "/lounge", label: "Lounge", Icon: IconLounge }],
+  },
 ] as const;
 
 export default function Sidebar() {
@@ -53,7 +71,7 @@ export default function Sidebar() {
   return (
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col overflow-visible border-r border-border/70 bg-surface/85 px-3 py-5 shadow-[8px_0_32px_-24px_rgba(180,100,130,0.35)] backdrop-blur-md md:flex">
       <CutFlowerScatter variant="sidebar" />
-      <Link href="/" className="relative mb-7 flex items-center gap-3 px-2">
+      <Link href="/" className="relative mb-5 flex items-center gap-3 px-2">
         <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-[#e8f0f7] to-brand text-sm font-bold tracking-tight text-brand-ink shadow-[0_10px_22px_-10px_rgba(120,145,170,0.4)]">
           A
         </span>
@@ -82,43 +100,46 @@ export default function Sidebar() {
       )}
 
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-        <nav className="flex flex-col gap-1.5">
-          {NAV_ITEMS.map((item) => {
-            const isActive =
-              item.href === "/"
-                ? pathname === "/"
-                : pathname.startsWith(item.href);
+        <nav className="flex flex-col gap-4">
+          {NAV_SECTIONS.map((section) => (
+            <div key={section.label} className="flex flex-col gap-1">
+              <p className="px-4 pb-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
+                {section.label}
+              </p>
+              {section.items.map((item) => {
+                const isActive =
+                  item.href === "/"
+                    ? pathname === "/"
+                    : pathname.startsWith(item.href);
 
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex items-center gap-3 px-4 py-2.5 text-sm font-semibold transition-all ${
-                  isActive
-                    ? "bloom-pill -mr-3 rounded-l-full rounded-r-none pr-5 shadow-[0_12px_28px_-12px_rgba(120,145,170,0.4)]"
-                    : "rounded-full text-muted hover:bg-panel hover:text-ink"
-                }`}
-              >
-                <item.Icon
-                  className={`h-4 w-4 ${isActive ? "opacity-100" : "opacity-80"}`}
-                />
-                {item.label}
-              </Link>
-            );
-          })}
-          <DiscordInviteLink />
-        </nav>
-        <div className="mt-auto flex flex-col gap-3 pt-4">
-          <AraPrefsControls compact />
-          <div className="rounded-[1.35rem] border border-border bg-gradient-to-br from-brand-soft to-panel px-3.5 py-3 shadow-[0_10px_24px_-16px_rgba(180,100,130,0.4)]">
-            <p className="text-sm font-semibold text-ink">Today</p>
-            <p className="mt-1 text-xs leading-snug text-muted">
-              Log notes, quiz, or teach Ara.
-            </p>
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`flex items-center gap-3 px-4 py-2 text-sm font-semibold transition-all ${
+                      isActive
+                        ? "bloom-pill -mr-3 rounded-l-full rounded-r-none pr-5 shadow-[0_12px_28px_-12px_rgba(120,145,170,0.4)]"
+                        : "rounded-full text-muted hover:bg-panel hover:text-ink"
+                    }`}
+                  >
+                    <item.Icon
+                      className={`h-4 w-4 ${isActive ? "opacity-100" : "opacity-80"}`}
+                    />
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
+          <div className="px-1">
+            <DiscordInviteLink />
           </div>
+        </nav>
+        <div className="mt-auto flex flex-col gap-3 pt-5">
+          <AraPrefsControls compact />
         </div>
       </div>
-      <div className="mt-3 shrink-0">
+      <div className="mt-3 shrink-0 border-t border-border/60 pt-3">
         <AccountMenu />
       </div>
     </aside>

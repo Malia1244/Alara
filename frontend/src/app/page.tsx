@@ -8,6 +8,14 @@ import { useAraPrefs } from "@/components/AraPrefsProvider";
 import AraPrefsControls from "@/components/AraPrefsControls";
 import DiscordInviteLink from "@/components/DiscordInviteLink";
 import {
+  IconCalendar,
+  IconHomework,
+  IconLounge,
+  IconShop,
+  IconTeach,
+  IconTimer,
+} from "@/components/nav-icons";
+import {
   createSubject,
   deleteSubject,
   fetchProgress,
@@ -17,6 +25,45 @@ import {
 } from "@/lib/api";
 import { araCoachLine } from "@/lib/araTips";
 import type { AraPose } from "@/lib/araPoses";
+
+const QUICK_LINKS = [
+  {
+    href: "/timed-study",
+    label: "Timed Study",
+    hint: "Focus timer",
+    Icon: IconTimer,
+  },
+  {
+    href: "/teach-ara",
+    label: "Teach Ara",
+    hint: "Explain it",
+    Icon: IconTeach,
+  },
+  {
+    href: "/homework",
+    label: "Homework",
+    hint: "Get help",
+    Icon: IconHomework,
+  },
+  {
+    href: "/calendar",
+    label: "Calendar",
+    hint: "Tests & plans",
+    Icon: IconCalendar,
+  },
+  {
+    href: "/lounge",
+    label: "Lounge",
+    hint: "Ask friends",
+    Icon: IconLounge,
+  },
+  {
+    href: "/shop",
+    label: "Shop",
+    hint: "Dress Ara",
+    Icon: IconShop,
+  },
+] as const;
 
 const ACCENTS = [
   {
@@ -239,43 +286,22 @@ export default function Home() {
                   : "Notes, quizzes, and Ara — a gentle place to learn."}
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
-                <Link
-                  href="/timed-study"
+                <a
+                  href="#subjects"
                   className="bloom-pill px-4 py-2 text-sm font-semibold transition hover:brightness-[1.02]"
                 >
-                  Start focus
-                </Link>
+                  Your subjects
+                </a>
                 <Link
-                  href="/shop"
+                  href="/timed-study"
                   className="rounded-full border border-[#c5d4e2]/80 bg-white/70 px-4 py-2 text-sm font-semibold text-brand-ink backdrop-blur-sm transition hover:bg-white"
                 >
-                  Dress Ara
+                  Start focus
                 </Link>
               </div>
             </div>
           </div>
-
-          <div className="relative z-[1] w-full sm:w-64">
-            <svg
-              viewBox="0 0 24 24"
-              className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-brand"
-              fill="none"
-              aria-hidden
-            >
-              <circle cx="11" cy="11" r="6.5" stroke="currentColor" strokeWidth="1.8" />
-              <path d="M16 16l4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-            </svg>
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search subjects"
-              className={`${inputClass} pl-11`}
-            />
-          </div>
         </header>
-
-        <DiscordInviteLink variant="banner" />
 
         {showTip && coachLine && (
           <div className="ara-callout ara-speech-bubble px-4 py-3 text-sm text-ink">
@@ -286,52 +312,37 @@ export default function Home() {
           </div>
         )}
 
-        <Link
-          href="/calendar"
-          className="interactive-tile flex items-center justify-between gap-4 border border-border bg-surface px-5 py-4"
-        >
+        <section className="animate-rise flex flex-col gap-3">
           <div>
-            <p className="font-display text-lg font-semibold text-ink">Calendar</p>
-            <p className="mt-1 text-sm text-muted">
-              See test dates and what&apos;s coming up.
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
+              Quick start
             </p>
+            <h2 className="mt-1 font-display text-xl font-semibold text-ink">
+              Where do you want to go?
+            </h2>
           </div>
-          <span className="bloom-pill shrink-0 px-4 py-2 text-sm font-semibold">
-            Open
-          </span>
-        </Link>
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+            {QUICK_LINKS.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="interactive-tile flex items-center gap-3 border border-border bg-surface px-3.5 py-3.5"
+              >
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-soft text-brand-ink">
+                  <item.Icon className="h-4 w-4" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold text-ink">
+                    {item.label}
+                  </span>
+                  <span className="block text-[11px] text-muted">{item.hint}</span>
+                </span>
+              </Link>
+            ))}
+          </div>
+        </section>
 
-        <Link
-          href="/lounge"
-          className="interactive-tile flex items-center justify-between gap-4 border border-border bg-surface px-5 py-4"
-        >
-          <div>
-            <p className="font-display text-lg font-semibold text-ink">Lounge</p>
-            <p className="mt-1 text-sm text-muted">
-              Share assignments and get help from other students.
-            </p>
-          </div>
-          <span className="bloom-pill shrink-0 px-4 py-2 text-sm font-semibold">
-            Open
-          </span>
-        </Link>
-
-        <Link
-          href="/timed-study"
-          className="interactive-tile flex items-center justify-between gap-4 border border-border bg-surface px-5 py-4"
-        >
-          <div>
-            <p className="font-display text-lg font-semibold text-ink">
-              Timed study
-            </p>
-            <p className="mt-1 text-sm text-muted">
-              Set a timer and goals — Ara keeps you on track.
-            </p>
-          </div>
-          <span className="bloom-pill shrink-0 px-4 py-2 text-sm font-semibold">
-            Start
-          </span>
-        </Link>
+        <DiscordInviteLink variant="banner" />
 
         {upcomingTestSubject && (
           <Link
@@ -363,6 +374,50 @@ export default function Home() {
             </span>
           </Link>
         )}
+
+        <section id="subjects" className="flex scroll-mt-6 flex-col gap-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
+                Study
+              </p>
+              <h2 className="mt-1 font-display text-xl font-semibold text-ink">
+                Your subjects
+              </h2>
+              <p className="mt-1 text-sm text-muted">
+                Open one to log notes, quiz, or practice.
+              </p>
+            </div>
+            <div className="relative w-full sm:w-56">
+              <svg
+                viewBox="0 0 24 24"
+                className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-brand"
+                fill="none"
+                aria-hidden
+              >
+                <circle
+                  cx="11"
+                  cy="11"
+                  r="6.5"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                />
+                <path
+                  d="M16 16l4 4"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                />
+              </svg>
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search subjects"
+                className={`${inputClass} pl-11`}
+              />
+            </div>
+          </div>
 
         {error && <p className="text-center text-sm text-accent">{error}</p>}
 
@@ -561,6 +616,7 @@ export default function Home() {
             Add subject
           </button>
         )}
+        </section>
 
         <AraPrefsControls className="mx-auto w-full max-w-sm md:hidden" />
       </main>
