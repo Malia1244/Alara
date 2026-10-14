@@ -16,6 +16,12 @@ export const LOUNGE_EMOJIS: LoungeEmoji[] = [
     src: "/emoji/sideeye.png",
     label: "Side eye",
   },
+  {
+    id: "hehe",
+    shortcode: ":hehe:",
+    src: "/emoji/hehe.png",
+    label: "Hehe",
+  },
 ];
 
 const SHORTCODE_PATTERN = /(:[a-z0-9_]+:)/gi;
