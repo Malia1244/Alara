@@ -33,13 +33,13 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
   },
   {
     id: "quiz",
-    title: "3. Take a quiz",
-    body: "Quiz yourself on those notes. You earn points, review weak spots, and stay ready for the test.",
+    title: "3. Take a quiz after each log",
+    body: "Right after you save notes, take that day’s quiz. You earn points, review weak spots, and stay ready for the test.",
   },
   {
     id: "done",
     title: "That’s it",
-    body: "Subjects keep you organized. Notes capture learning. Quizzes lock it in. Check Calendar for upcoming tests.",
+    body: "Subjects keep you organized. Log what you learned, then quiz it every time so it sticks. Check Calendar for upcoming tests.",
     href: "/calendar",
     cta: "See Calendar",
   },

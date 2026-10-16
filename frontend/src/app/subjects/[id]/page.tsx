@@ -123,14 +123,21 @@ export default function SubjectPage() {
         content: notes,
       });
       setContent("");
-      if (saved.points_earned && saved.points_earned > 0) {
-        setPrizeMessage(
-          reviewingPast
-            ? `Nice! +${saved.points_earned} shop points — today's quiz will review past notes.`
-            : `Nice! +${saved.points_earned} shop points for logging what you learned.`
-        );
-      }
+      const points =
+        saved.points_earned && saved.points_earned > 0
+          ? `+${saved.points_earned} shop points. `
+          : "";
+      setPrizeMessage(
+        reviewingPast
+          ? `${points}Next: take today's quiz — it'll review your past notes.`
+          : `${points}Next: take today's quiz on what you just logged.`
+      );
       await loadData();
+      window.setTimeout(() => {
+        document
+          .getElementById("todays-quiz")
+          ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 120);
     } catch {
       setError("Couldn't save your entry. Please try again.");
     } finally {
@@ -256,8 +263,8 @@ export default function SubjectPage() {
                 required
               />
               <p className="mt-2 text-xs text-muted">
-                Notes feeling fuzzy? Ask Ara for a short plain-English summary
-                before you save. First log today earns{" "}
+                After you save, take the quiz on this log — that&apos;s how it
+                sticks. First log today earns{" "}
                 <span className="font-semibold text-brand-ink">+25 shop points</span>
                 .
               </p>
@@ -287,11 +294,18 @@ export default function SubjectPage() {
               </button>
             </div>
             <p className="text-xs text-muted">
-              Nothing new? Check in anyway — today&apos;s quiz will review past
-              notes for this subject
+              Nothing new? Check in anyway, then take today&apos;s quiz — it
+              reviews past notes for this subject
               {!hasPastStudyNotes ? " (add notes on another day first)" : ""}.
             </p>
           </form>
+        )}
+
+        {todaysEntry && (
+          <p className="rounded-2xl border border-brand/30 bg-brand-soft/70 px-4 py-3 text-sm font-semibold text-brand-ink">
+            Log saved for today — open the quiz below and take it before you
+            leave.
+          </p>
         )}
 
         {entries.length > 0 && (
@@ -299,7 +313,7 @@ export default function SubjectPage() {
             <div className="flex items-end justify-between gap-3">
               <h2 className="text-sm font-semibold text-muted">Study log</h2>
               <p className="text-[11px] text-muted">
-                Tap a day to see the notes and quiz
+                After each log, take that day&apos;s quiz
               </p>
             </div>
             <ul className="flex flex-col gap-2">
@@ -393,15 +407,28 @@ export default function SubjectPage() {
                           )}
                         </div>
 
-                        <div className="rounded-2xl border border-border bg-panel/60 p-4">
+                        <div
+                          id={today ? "todays-quiz" : undefined}
+                          className={`rounded-2xl border bg-panel/60 p-4 ${
+                            today
+                              ? "border-brand/45 ring-1 ring-brand/20"
+                              : "border-border"
+                          }`}
+                        >
                           <div className="mb-2 flex items-center justify-between gap-2">
                             <span className="rounded-lg bg-brand-soft px-3 py-1 text-xs font-semibold text-brand">
-                              {today ? "Today's quiz" : "Quiz"}
+                              {today ? "Today's quiz — take this next" : "Quiz"}
                             </span>
                             <span className="text-xs text-muted">
                               {formatDate(entry.created_at)}
                             </span>
                           </div>
+                          {today && (
+                            <p className="mb-2 text-xs text-muted">
+                              Don&apos;t skip this — a short quiz after each log
+                              is what helps it stick.
+                            </p>
+                          )}
                           <QuizPanel entryId={entry.id} />
                         </div>
                       </div>

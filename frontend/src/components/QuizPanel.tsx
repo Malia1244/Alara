@@ -194,15 +194,16 @@ export default function QuizPanel({
 
   if (!quiz) {
     return (
-      <div className="mt-4 rounded-3xl border border-border bg-surface p-4 sm:p-5">
+      <div className="mt-4 rounded-3xl border border-brand/35 bg-surface p-4 sm:p-5">
         <div className="flex items-start gap-3">
           <AraAvatar size={44} pose="think" motion="none" className="shrink-0" />
           <div>
             <p className="font-display text-base font-bold text-stone-900">
-              Quiz setup
+              Take your quiz
             </p>
             <p className="mt-0.5 text-sm text-muted">
-              Pick how hard it should be and how many questions, then generate.
+              After every log, generate a quiz on those notes. Pick difficulty
+              and length, then start.
             </p>
           </div>
         </div>
@@ -273,7 +274,7 @@ export default function QuizPanel({
         >
           {isLoading
             ? "Making your quiz…"
-            : `Generate ${numQuestions}-question ${difficulty} quiz`}
+            : `Start ${numQuestions}-question ${difficulty} quiz`}
         </button>
         {error && <p className="mt-2 text-sm text-rose-500">{error}</p>}
       </div>

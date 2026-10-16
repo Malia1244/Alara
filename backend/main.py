@@ -2625,28 +2625,53 @@ def list_lounge_messages(
     """Every signed-in student sees the same recent messages."""
     room = _require_lounge_room(room_id)
     supabase = get_supabase()
+    select_with_avatar = (
+        "id, user_id, room_id, author_label, body, created_at, "
+        "image_path, reply_to_id, author_avatar_path"
+    )
+    select_without_avatar = (
+        "id, user_id, room_id, author_label, body, created_at, "
+        "image_path, reply_to_id"
+    )
     try:
         response = (
             supabase.table("community_messages")
-            .select(
-                "id, user_id, room_id, author_label, body, created_at, "
-                "image_path, reply_to_id, author_avatar_path"
-            )
+            .select(select_with_avatar)
             .eq("room_id", room)
             .order("created_at", desc=True)
             .limit(LOUNGE_MESSAGE_LIMIT)
             .execute()
         )
     except Exception as exc:
+        # Lounge chat should still work before 009_avatars.sql is applied.
         if _needs_avatar_migration(exc):
-            raise HTTPException(status_code=503, detail=AVATAR_SETUP_HINT) from exc
-        if _needs_lounge_image_migration(exc):
+            try:
+                response = (
+                    supabase.table("community_messages")
+                    .select(select_without_avatar)
+                    .eq("room_id", room)
+                    .order("created_at", desc=True)
+                    .limit(LOUNGE_MESSAGE_LIMIT)
+                    .execute()
+                )
+            except Exception as inner:
+                if _needs_lounge_image_migration(inner):
+                    raise HTTPException(
+                        status_code=503, detail=LOUNGE_IMAGE_SETUP_HINT
+                    ) from inner
+                if _is_missing_lounge_table(inner):
+                    raise HTTPException(
+                        status_code=503, detail=LOUNGE_SETUP_HINT
+                    ) from inner
+                raise
+        elif _needs_lounge_image_migration(exc):
             raise HTTPException(
                 status_code=503, detail=LOUNGE_IMAGE_SETUP_HINT
             ) from exc
-        if _is_missing_lounge_table(exc):
+        elif _is_missing_lounge_table(exc):
             raise HTTPException(status_code=503, detail=LOUNGE_SETUP_HINT) from exc
-        raise
+        else:
+            raise
     rows = list(reversed(response.data or []))
     by_id = {row["id"]: row for row in rows}
     return [_lounge_row_to_message(row, user.id, supabase, by_id) for row in rows]
@@ -2709,16 +2734,35 @@ def post_lounge_message(body: LoungePostRequest, user: CurrentUser):
     try:
         response = supabase.table("community_messages").insert(row).execute()
     except Exception as exc:
-        _lounge_remove_image(supabase, image_path)
+        # Before 009_avatars.sql, drop the avatar column and retry once.
         if _needs_avatar_migration(exc):
-            raise HTTPException(status_code=503, detail=AVATAR_SETUP_HINT) from exc
-        if _needs_lounge_image_migration(exc):
-            raise HTTPException(
-                status_code=503, detail=LOUNGE_IMAGE_SETUP_HINT
-            ) from exc
-        if _is_missing_lounge_table(exc):
-            raise HTTPException(status_code=503, detail=LOUNGE_SETUP_HINT) from exc
-        raise
+            row.pop("author_avatar_path", None)
+            try:
+                response = (
+                    supabase.table("community_messages").insert(row).execute()
+                )
+            except Exception as inner:
+                _lounge_remove_image(supabase, image_path)
+                if _needs_lounge_image_migration(inner):
+                    raise HTTPException(
+                        status_code=503, detail=LOUNGE_IMAGE_SETUP_HINT
+                    ) from inner
+                if _is_missing_lounge_table(inner):
+                    raise HTTPException(
+                        status_code=503, detail=LOUNGE_SETUP_HINT
+                    ) from inner
+                raise
+        else:
+            _lounge_remove_image(supabase, image_path)
+            if _needs_lounge_image_migration(exc):
+                raise HTTPException(
+                    status_code=503, detail=LOUNGE_IMAGE_SETUP_HINT
+                ) from exc
+            if _is_missing_lounge_table(exc):
+                raise HTTPException(
+                    status_code=503, detail=LOUNGE_SETUP_HINT
+                ) from exc
+            raise
     if not response.data:
         _lounge_remove_image(supabase, image_path)
         raise HTTPException(status_code=500, detail="Couldn't send that message.")

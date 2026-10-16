@@ -148,11 +148,11 @@ export default function StudyReminderBanner() {
       >
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold leading-snug text-ink">
-            Time to log what you learned
+            Time to log — then take the quiz
           </p>
           <p className="mt-0.5 text-xs text-muted">
             Save today&apos;s notes for {first.name}
-            {extra} and earn shop points.
+            {extra}, quiz them, and earn shop points.
           </p>
           <Link
             href={`/subjects/${first.id}`}
