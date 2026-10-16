@@ -86,6 +86,36 @@ export type ShopState = {
   equipped: Record<string, string | null>;
 };
 
+export type GiftCardOffer = {
+  id: string;
+  name: string;
+  emoji: string;
+  image?: string | null;
+  points: number;
+  amount_usd: number;
+  blurb: string;
+  available?: boolean;
+};
+
+export type GiftCardRedemption = {
+  id: string;
+  offer_id: string;
+  name: string;
+  amount_usd: number;
+  points_spent: number;
+  status: string;
+  email: string;
+  created_at: string;
+  fulfilled_at?: string | null;
+};
+
+export type GiftCardCatalog = {
+  points: number;
+  offers: GiftCardOffer[];
+  redemptions: GiftCardRedemption[];
+  pending_count: number;
+};
+
 export type SubjectAccuracy = {
   subject_id: string | null;
   subject: string;
@@ -453,6 +483,36 @@ export async function purchaseShopItem(itemId: string): Promise<ShopState> {
     throw new Error(body?.detail ?? `Failed to buy item (${res.status})`);
   }
   return shopStateFromResponse(res);
+}
+
+async function giftCardError(res: Response, fallback: string): Promise<string> {
+  const body = await res.json().catch(() => null);
+  const detail = body?.detail;
+  if (typeof detail === "string") return detail;
+  return fallback;
+}
+
+export async function fetchGiftCards(): Promise<GiftCardCatalog> {
+  const res = await apiFetch("/shop/gift-cards");
+  if (!res.ok) {
+    throw new Error(
+      await giftCardError(res, `Couldn't load gift cards (${res.status})`)
+    );
+  }
+  return res.json();
+}
+
+export async function redeemGiftCard(offerId: string): Promise<GiftCardCatalog> {
+  const res = await apiFetch("/shop/gift-cards/redeem", {
+    method: "POST",
+    body: JSON.stringify({ offer_id: offerId }),
+  });
+  if (!res.ok) {
+    throw new Error(
+      await giftCardError(res, `Couldn't redeem that (${res.status})`)
+    );
+  }
+  return res.json();
 }
 
 export async function equipShopItem(itemId: string): Promise<ShopState> {

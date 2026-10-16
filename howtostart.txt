@@ -10,11 +10,15 @@ AUTH SETUP (once)
    supabase/migrations/007_lounge_images.sql
    supabase/migrations/008_calendar_events.sql
    supabase/migrations/009_avatars.sql
+   supabase/migrations/010_storage_write_lockdown.sql
+   supabase/migrations/011_gift_card_redemptions.sql
    (005 turns on Row Level Security — required to fix “table publicly accessible”)
    (006 creates the shared Lounge chat every signed-in student can use)
    (007 lets Lounge posts include photos and replies for assignment help)
    (008 adds personal calendar events)
    (009 adds changeable profile pics for Lounge)
+   (010 blocks browser uploads to photo buckets — API only)
+   (011 gift card claims in Shop — check gift_card_redemptions for pending)
 2. In Supabase → Authentication, enable Email provider.
    (Optional) turn OFF "Confirm email" while testing locally.
    For "Forgot password": Authentication → URL Configuration

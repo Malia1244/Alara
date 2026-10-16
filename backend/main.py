@@ -729,6 +729,82 @@ class UnequipRequest(BaseModel):
     slot: str
 
 
+# Real-world prizes — not catalog outfits. Fulfilled by hand after redeem.
+# "image" is a filename inside frontend/public/gift-cards/.
+# "available": False marks coming-soon cards (shown, not redeemable).
+GIFT_CARD_OFFERS = [
+    {
+        "id": "gift-stil-5",
+        "name": "The Stil · $5",
+        "emoji": "🍦",
+        "image": "stil.png",
+        "points": 500,
+        "amount_usd": 5,
+        "blurb": "Boise ice cream — redeem 500 points for a $5 The Stil gift card.",
+        "available": True,
+    },
+    {
+        "id": "gift-blue-cow-5",
+        "name": "Blue Cow · $5",
+        "emoji": "🐄",
+        "image": "blue-cow.png",
+        "points": 500,
+        "amount_usd": 5,
+        "blurb": "Frozen yogurt treat — redeem 500 points for a $5 Blue Cow gift card.",
+        "available": True,
+    },
+    {
+        "id": "gift-amazon-5",
+        "name": "Amazon · $5",
+        "emoji": "📦",
+        "image": "amazon.png",
+        "points": 500,
+        "amount_usd": 5,
+        "blurb": "Amazon gift card — coming soon.",
+        "available": False,
+    },
+]
+GIFT_CARD_BY_ID = {offer["id"]: offer for offer in GIFT_CARD_OFFERS}
+GIFT_CARD_SETUP_HINT = (
+    "Gift cards aren't set up yet. In Supabase → SQL Editor, run "
+    "supabase/migrations/011_gift_card_redemptions.sql, then try again."
+)
+
+
+class GiftCardOffer(BaseModel):
+    id: str
+    name: str
+    emoji: str
+    image: Optional[str] = None
+    points: int
+    amount_usd: int
+    blurb: str
+    available: bool = True
+
+
+class GiftCardRedemption(BaseModel):
+    id: str
+    offer_id: str
+    name: str
+    amount_usd: int
+    points_spent: int
+    status: str
+    email: str
+    created_at: str
+    fulfilled_at: Optional[str] = None
+
+
+class GiftCardRedeemRequest(BaseModel):
+    offer_id: str = Field(..., min_length=1, max_length=64)
+
+
+class GiftCardCatalogResponse(BaseModel):
+    points: int
+    offers: List[GiftCardOffer]
+    redemptions: List[GiftCardRedemption]
+    pending_count: int
+
+
 class TeachTopic(BaseModel):
     topic: str
     subject: str
@@ -1969,6 +2045,138 @@ def unequip_item(unequip: UnequipRequest, user_id: CurrentUserId):
     )
 
 
+def _is_missing_gift_card_table(exc: BaseException) -> bool:
+    text = str(exc).lower()
+    return (
+        "gift_card_redemptions" in text
+        or ("does not exist" in text and "gift" in text)
+    )
+
+
+def _gift_card_offer_name(offer_id: str) -> str:
+    offer = GIFT_CARD_BY_ID.get(offer_id)
+    return offer["name"] if offer else offer_id
+
+
+def _gift_card_row_to_model(row: dict) -> GiftCardRedemption:
+    return GiftCardRedemption(
+        id=row["id"],
+        offer_id=row["offer_id"],
+        name=_gift_card_offer_name(row["offer_id"]),
+        amount_usd=int(row["amount_usd"]),
+        points_spent=int(row["points_spent"]),
+        status=row["status"],
+        email=row.get("email") or "",
+        created_at=row["created_at"],
+        fulfilled_at=row.get("fulfilled_at"),
+    )
+
+
+def _list_gift_card_redemptions(
+    supabase: Client, user_id: str
+) -> List[GiftCardRedemption]:
+    try:
+        response = (
+            supabase.table("gift_card_redemptions")
+            .select(
+                "id, offer_id, amount_usd, points_spent, status, email, "
+                "created_at, fulfilled_at"
+            )
+            .eq("user_id", user_id)
+            .order("created_at", desc=True)
+            .limit(25)
+            .execute()
+        )
+    except Exception as exc:
+        if _is_missing_gift_card_table(exc):
+            raise HTTPException(status_code=503, detail=GIFT_CARD_SETUP_HINT) from exc
+        raise
+    return [_gift_card_row_to_model(row) for row in (response.data or [])]
+
+
+@app.get("/shop/gift-cards", response_model=GiftCardCatalogResponse)
+def list_gift_cards(user: CurrentUser):
+    supabase = get_supabase()
+    stats = get_or_create_stats_row(supabase, user.id)
+    redemptions = _list_gift_card_redemptions(supabase, user.id)
+    pending_count = sum(1 for row in redemptions if row.status == "pending")
+    return GiftCardCatalogResponse(
+        points=stats["points"],
+        offers=[GiftCardOffer(**offer) for offer in GIFT_CARD_OFFERS],
+        redemptions=redemptions,
+        pending_count=pending_count,
+    )
+
+
+@app.post("/shop/gift-cards/redeem", response_model=GiftCardCatalogResponse)
+def redeem_gift_card(body: GiftCardRedeemRequest, user: CurrentUser):
+    offer = GIFT_CARD_BY_ID.get((body.offer_id or "").strip())
+    if not offer:
+        raise HTTPException(status_code=404, detail="That gift card isn't available.")
+    if not offer.get("available", True):
+        raise HTTPException(
+            status_code=400,
+            detail="That gift card is coming soon — pick The Stil or Blue Cow for now.",
+        )
+    if not user.email:
+        raise HTTPException(
+            status_code=400,
+            detail="Your account needs an email before you can redeem a gift card.",
+        )
+
+    supabase = get_supabase()
+    stats = get_or_create_stats_row(supabase, user.id)
+    redemptions = _list_gift_card_redemptions(supabase, user.id)
+    if any(row.status == "pending" for row in redemptions):
+        raise HTTPException(
+            status_code=400,
+            detail="You already have a gift card waiting to be sent. Hang tight!",
+        )
+    if stats["points"] < offer["points"]:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Need {offer['points']} points for that gift card.",
+        )
+
+    new_points = int(stats["points"]) - int(offer["points"])
+    supabase.table("user_stats").update({"points": new_points}).eq(
+        "user_id", user.id
+    ).execute()
+
+    row = {
+        "user_id": user.id,
+        "email": user.email,
+        "offer_id": offer["id"],
+        "amount_usd": offer["amount_usd"],
+        "points_spent": offer["points"],
+        "status": "pending",
+    }
+    try:
+        insert = supabase.table("gift_card_redemptions").insert(row).execute()
+    except Exception as exc:
+        # Refund points if the claim couldn't be saved.
+        supabase.table("user_stats").update({"points": stats["points"]}).eq(
+            "user_id", user.id
+        ).execute()
+        if _is_missing_gift_card_table(exc):
+            raise HTTPException(status_code=503, detail=GIFT_CARD_SETUP_HINT) from exc
+        raise
+    if not insert.data:
+        supabase.table("user_stats").update({"points": stats["points"]}).eq(
+            "user_id", user.id
+        ).execute()
+        raise HTTPException(status_code=500, detail="Couldn't start that gift card claim.")
+
+    redemptions = _list_gift_card_redemptions(supabase, user.id)
+    pending_count = sum(1 for r in redemptions if r.status == "pending")
+    return GiftCardCatalogResponse(
+        points=new_points,
+        offers=[GiftCardOffer(**o) for o in GIFT_CARD_OFFERS],
+        redemptions=redemptions,
+        pending_count=pending_count,
+    )
+
+
 def _notes_for_subject(
     supabase: Client, user_id: str, subject_id: Optional[str], subject_name: str
 ) -> str:
@@ -2515,6 +2723,22 @@ def _lounge_remove_image(supabase: Client, image_path: Optional[str]) -> None:
         return
 
 
+def _owned_storage_path(user_id: str, image_path: Optional[str]) -> Optional[str]:
+    """Only allow storage paths under this user's folder (blocks metadata spoofing)."""
+    if not image_path or not user_id:
+        return None
+    path = str(image_path).strip().replace("\\", "/")
+    if not path or ".." in path.split("/"):
+        return None
+    prefix = f"{user_id}/"
+    if not path.startswith(prefix):
+        return None
+    rest = path[len(prefix) :]
+    if not rest or "/" in rest:
+        return None
+    return path
+
+
 def _avatar_remove(supabase: Client, image_path: Optional[str]) -> None:
     if not image_path:
         return
@@ -2598,7 +2822,7 @@ def upload_my_avatar(body: AvatarUploadRequest, user: CurrentUser):
             status_code=502,
             detail="Couldn't save that photo. Try a smaller JPEG or PNG.",
         ) from exc
-    old_path = user.avatar_path
+    old_path = _owned_storage_path(user.id, user.avatar_path)
     try:
         _set_user_avatar_path(supabase, user.id, path)
     except Exception:
@@ -2612,8 +2836,9 @@ def upload_my_avatar(body: AvatarUploadRequest, user: CurrentUser):
 @app.delete("/me/avatar", response_model=AvatarResponse)
 def delete_my_avatar(user: CurrentUser):
     supabase = get_supabase()
+    owned = _owned_storage_path(user.id, user.avatar_path)
     _set_user_avatar_path(supabase, user.id, None)
-    _avatar_remove(supabase, user.avatar_path)
+    _avatar_remove(supabase, owned)
     return AvatarResponse(avatar_url=None, avatar_path=None)
 
 
@@ -2726,7 +2951,7 @@ def post_lounge_message(body: LoungePostRequest, user: CurrentUser):
         "author_label": _lounge_author_label(
             user.email, user.id, user.display_name
         ),
-        "author_avatar_path": user.avatar_path,
+        "author_avatar_path": _owned_storage_path(user.id, user.avatar_path),
         "body": text[:LOUNGE_BODY_MAX],
         "image_path": image_path,
         "reply_to_id": reply_to_id,
@@ -2800,7 +3025,10 @@ def delete_lounge_message(message_id: str, user: CurrentUser):
     supabase.table("community_messages").delete().eq("id", message_id).eq(
         "user_id", user.id
     ).execute()
-    _lounge_remove_image(supabase, row.get("image_path"))
+    # Only delete storage objects that live under this user's folder.
+    _lounge_remove_image(
+        supabase, _owned_storage_path(user.id, row.get("image_path"))
+    )
     return None
 
 
