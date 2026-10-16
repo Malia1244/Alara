@@ -7,6 +7,7 @@ import AccountMenu from "@/components/AccountMenu";
 import AraPrefsControls from "@/components/AraPrefsControls";
 import CutFlowerScatter from "@/components/CutFlowers";
 import DiscordInviteLink from "@/components/DiscordInviteLink";
+import { useLoungeUnread } from "@/hooks/useLoungeUnread";
 import { fetchShopState } from "@/lib/api";
 import {
   IconCalendar,
@@ -52,6 +53,7 @@ const NAV_SECTIONS = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const loungeUnread = useLoungeUnread();
   const [points, setPoints] = useState<number | null>(null);
 
   useEffect(() => {
@@ -112,6 +114,8 @@ export default function Sidebar() {
                     ? pathname === "/"
                     : pathname.startsWith(item.href);
 
+                const showDot = item.href === "/lounge" && loungeUnread;
+
                 return (
                   <Link
                     key={item.href}
@@ -122,10 +126,23 @@ export default function Sidebar() {
                         : "rounded-full text-muted hover:bg-panel hover:text-ink"
                     }`}
                   >
-                    <item.Icon
-                      className={`h-4 w-4 ${isActive ? "opacity-100" : "opacity-80"}`}
-                    />
-                    {item.label}
+                    <span className="relative shrink-0">
+                      <item.Icon
+                        className={`h-4 w-4 ${isActive ? "opacity-100" : "opacity-80"}`}
+                      />
+                      {showDot && (
+                        <span
+                          className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-red-500 ring-2 ring-surface"
+                          aria-hidden
+                        />
+                      )}
+                    </span>
+                    <span className="flex min-w-0 items-center gap-2">
+                      {item.label}
+                      {showDot && (
+                        <span className="sr-only">New messages</span>
+                      )}
+                    </span>
                   </Link>
                 );
               })}

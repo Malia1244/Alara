@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import AccountMenu from "@/components/AccountMenu";
+import { useLoungeUnread } from "@/hooks/useLoungeUnread";
 import {
   IconCalendar,
   IconHome,
@@ -25,6 +26,7 @@ const NAV_ITEMS = [
 
 export default function BottomNav() {
   const pathname = usePathname();
+  const loungeUnread = useLoungeUnread();
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-border/70 bg-surface/90 shadow-[0_-12px_36px_-20px_rgba(180,100,130,0.35)] backdrop-blur-xl md:hidden">
@@ -37,6 +39,7 @@ export default function BottomNav() {
             item.href === "/"
               ? pathname === "/"
               : pathname.startsWith(item.href);
+          const showDot = item.href === "/lounge" && loungeUnread;
 
           return (
             <Link
@@ -48,8 +51,17 @@ export default function BottomNav() {
                   : "rounded-2xl text-muted hover:bg-panel hover:text-ink"
               }`}
             >
-              <item.Icon className="h-5 w-5" />
+              <span className="relative">
+                <item.Icon className="h-5 w-5" />
+                {showDot && (
+                  <span
+                    className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-red-500 ring-2 ring-surface"
+                    aria-hidden
+                  />
+                )}
+              </span>
               {item.label}
+              {showDot && <span className="sr-only">New messages</span>}
             </Link>
           );
         })}

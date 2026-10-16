@@ -61,7 +61,14 @@ export default function StudyReminderBanner() {
       setPending([]);
       return;
     }
-    if (pathname === "/login" || pathname === "/signup") return;
+    if (
+      pathname === "/login" ||
+      pathname === "/signup" ||
+      pathname === "/forgot-password" ||
+      pathname === "/reset-password"
+    ) {
+      return;
+    }
 
     let cancelled = false;
 

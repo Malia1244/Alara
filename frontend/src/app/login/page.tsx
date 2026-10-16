@@ -64,6 +64,14 @@ export default function LoginPage() {
               className={inputClass}
             />
           </label>
+          <p className="-mt-1 text-right text-sm">
+            <Link
+              href="/forgot-password"
+              className="font-semibold text-brand hover:underline"
+            >
+              Forgot password?
+            </Link>
+          </p>
           {error && <p className="text-sm text-accent">{error}</p>}
           <button
             type="submit"

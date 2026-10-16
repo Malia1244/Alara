@@ -563,9 +563,15 @@ export type LoungeMessage = {
   created_at: string;
   is_mine: boolean;
   image_url?: string | null;
+  author_avatar_url?: string | null;
   reply_to_id?: string | null;
   reply_to_label?: string | null;
   reply_to_preview?: string | null;
+};
+
+export type AvatarResponse = {
+  avatar_url: string | null;
+  avatar_path: string | null;
 };
 
 async function loungeError(res: Response, fallback: string): Promise<string> {
@@ -612,6 +618,31 @@ export async function deleteLoungeMessage(messageId: string): Promise<void> {
   if (!res.ok) {
     throw new Error(await loungeError(res, `Couldn't remove message (${res.status})`));
   }
+}
+
+export async function uploadAvatar(input: {
+  image_base64: string;
+  image_mime: string;
+}): Promise<AvatarResponse> {
+  const res = await apiFetch("/me/avatar", {
+    method: "POST",
+    body: JSON.stringify({
+      image_base64: input.image_base64,
+      image_mime: input.image_mime,
+    }),
+  });
+  if (!res.ok) {
+    throw new Error(await loungeError(res, `Couldn't save photo (${res.status})`));
+  }
+  return res.json();
+}
+
+export async function deleteAvatar(): Promise<AvatarResponse> {
+  const res = await apiFetch("/me/avatar", { method: "DELETE" });
+  if (!res.ok) {
+    throw new Error(await loungeError(res, `Couldn't remove photo (${res.status})`));
+  }
+  return res.json();
 }
 
 async function calendarError(res: Response, fallback: string): Promise<string> {

@@ -8,11 +8,19 @@ AUTH SETUP (once)
    supabase/migrations/005_enable_rls.sql
    supabase/migrations/006_community_messages.sql
    supabase/migrations/007_lounge_images.sql
+   supabase/migrations/008_calendar_events.sql
+   supabase/migrations/009_avatars.sql
    (005 turns on Row Level Security — required to fix “table publicly accessible”)
    (006 creates the shared Lounge chat every signed-in student can use)
    (007 lets Lounge posts include photos and replies for assignment help)
+   (008 adds personal calendar events)
+   (009 adds changeable profile pics for Lounge)
 2. In Supabase → Authentication, enable Email provider.
    (Optional) turn OFF "Confirm email" while testing locally.
+   For "Forgot password": Authentication → URL Configuration
+   - Site URL = your app (http://localhost:3000 locally, or Vercel URL)
+   - Redirect URLs must include http://localhost:3000/reset-password
+     and https://YOUR-VERCEL-URL/reset-password
 3. Add to frontend/.env.local:
    NEXT_PUBLIC_SUPABASE_URL=...
    NEXT_PUBLIC_SUPABASE_ANON_KEY=...

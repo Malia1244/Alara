@@ -21,7 +21,12 @@ import {
   readStudySession,
 } from "@/lib/studySession";
 
-const PUBLIC_PATHS = new Set(["/login", "/signup"]);
+const PUBLIC_PATHS = new Set([
+  "/login",
+  "/signup",
+  "/forgot-password",
+  "/reset-password",
+]);
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();

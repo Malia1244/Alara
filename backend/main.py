@@ -830,6 +830,12 @@ LOUNGE_IMAGE_SETUP_HINT = (
     "Lounge photos aren't set up yet. In Supabase → SQL Editor, run "
     "supabase/migrations/007_lounge_images.sql, then try again."
 )
+AVATAR_BUCKET = "avatars"
+AVATAR_MAX_BYTES = 2 * 1024 * 1024
+AVATAR_SETUP_HINT = (
+    "Profile photos aren't set up yet. In Supabase → SQL Editor, run "
+    "supabase/migrations/009_avatars.sql, then try again."
+)
 
 
 class LoungeMessage(BaseModel):
@@ -841,6 +847,7 @@ class LoungeMessage(BaseModel):
     created_at: str
     is_mine: bool
     image_url: Optional[str] = None
+    author_avatar_url: Optional[str] = None
     reply_to_id: Optional[str] = None
     reply_to_label: Optional[str] = None
     reply_to_preview: Optional[str] = None
@@ -852,6 +859,16 @@ class LoungePostRequest(BaseModel):
     reply_to_id: Optional[str] = None
     image_base64: Optional[str] = Field(default=None, max_length=6_000_000)
     image_mime: Optional[str] = Field(default=None, max_length=64)
+
+
+class AvatarUploadRequest(BaseModel):
+    image_base64: str = Field(..., max_length=4_000_000)
+    image_mime: str = Field(..., max_length=64)
+
+
+class AvatarResponse(BaseModel):
+    avatar_url: Optional[str] = None
+    avatar_path: Optional[str] = None
 
 
 def get_equipped_map(supabase: Client, user_id: str) -> dict:
@@ -2406,7 +2423,31 @@ def _lounge_author_label(
     return f"student-{user_id[:6]}"
 
 
-def _lounge_decode_image(image_base64: str, image_mime: Optional[str]) -> tuple[bytes, str, str]:
+def _needs_avatar_migration(exc: BaseException) -> bool:
+    text = str(exc).lower()
+    return (
+        "author_avatar_path" in text
+        or "avatars" in text
+        or ("bucket" in text and "avatar" in text)
+    )
+
+
+def _public_storage_url(bucket: str, image_path: Optional[str]) -> Optional[str]:
+    if not image_path:
+        return None
+    base = (SUPABASE_URL or "").rstrip("/")
+    if not base:
+        return None
+    parts = "/".join(quote(segment, safe="-_.") for segment in str(image_path).split("/"))
+    return f"{base}/storage/v1/object/public/{bucket}/{parts}"
+
+
+def _lounge_decode_image(
+    image_base64: str,
+    image_mime: Optional[str],
+    *,
+    max_bytes: int = LOUNGE_IMAGE_MAX_BYTES,
+) -> tuple[bytes, str, str]:
     mime = (image_mime or "").strip().lower()
     ext = LOUNGE_IMAGE_EXTS.get(mime)
     if not ext:
@@ -2423,10 +2464,13 @@ def _lounge_decode_image(image_base64: str, image_mime: Optional[str]) -> tuple[
         raise HTTPException(status_code=400, detail="Couldn't read that photo.") from exc
     if not data:
         raise HTTPException(status_code=400, detail="That photo was empty.")
-    if len(data) > LOUNGE_IMAGE_MAX_BYTES:
+    if len(data) > max_bytes:
         raise HTTPException(
             status_code=400,
-            detail="That photo is too large — try one under 4 MB.",
+            detail=(
+                "That photo is too large — try one under "
+                f"{max_bytes // (1024 * 1024)} MB."
+            ),
         )
     return data, mime, ext
 
@@ -2455,13 +2499,11 @@ def _lounge_upload_image(
 
 
 def _lounge_image_url(image_path: Optional[str]) -> Optional[str]:
-    if not image_path:
-        return None
-    base = (SUPABASE_URL or "").rstrip("/")
-    if not base:
-        return None
-    parts = "/".join(quote(segment, safe="-_.") for segment in str(image_path).split("/"))
-    return f"{base}/storage/v1/object/public/{LOUNGE_BUCKET}/{parts}"
+    return _public_storage_url(LOUNGE_BUCKET, image_path)
+
+
+def _avatar_image_url(image_path: Optional[str]) -> Optional[str]:
+    return _public_storage_url(AVATAR_BUCKET, image_path)
 
 
 def _lounge_remove_image(supabase: Client, image_path: Optional[str]) -> None:
@@ -2471,6 +2513,28 @@ def _lounge_remove_image(supabase: Client, image_path: Optional[str]) -> None:
         supabase.storage.from_(LOUNGE_BUCKET).remove([image_path])
     except Exception:
         return
+
+
+def _avatar_remove(supabase: Client, image_path: Optional[str]) -> None:
+    if not image_path:
+        return
+    try:
+        supabase.storage.from_(AVATAR_BUCKET).remove([image_path])
+    except Exception:
+        return
+
+
+def _set_user_avatar_path(supabase: Client, user_id: str, avatar_path: Optional[str]) -> None:
+    try:
+        supabase.auth.admin.update_user_by_id(
+            user_id,
+            {"user_metadata": {"avatar_path": avatar_path}},
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=502,
+            detail="Couldn't save your profile photo. Try again.",
+        ) from exc
 
 
 def _lounge_row_to_message(
@@ -2499,10 +2563,58 @@ def _lounge_row_to_message(
         created_at=row["created_at"],
         is_mine=row["user_id"] == user_id,
         image_url=_lounge_image_url(row.get("image_path")),
+        author_avatar_url=_avatar_image_url(row.get("author_avatar_path")),
         reply_to_id=reply_to_id,
         reply_to_label=(parent or {}).get("author_label") if parent else None,
         reply_to_preview=preview,
     )
+
+
+@app.get("/me/avatar", response_model=AvatarResponse)
+def get_my_avatar(user: CurrentUser):
+    return AvatarResponse(
+        avatar_url=_avatar_image_url(user.avatar_path),
+        avatar_path=user.avatar_path,
+    )
+
+
+@app.post("/me/avatar", response_model=AvatarResponse)
+def upload_my_avatar(body: AvatarUploadRequest, user: CurrentUser):
+    supabase = get_supabase()
+    data, mime, ext = _lounge_decode_image(
+        body.image_base64, body.image_mime, max_bytes=AVATAR_MAX_BYTES
+    )
+    path = f"{user.id}/{uuid.uuid4().hex}.{ext}"
+    try:
+        supabase.storage.from_(AVATAR_BUCKET).upload(
+            path,
+            data,
+            {"content-type": mime, "upsert": "false"},
+        )
+    except Exception as exc:
+        if _needs_avatar_migration(exc) or "bucket" in str(exc).lower():
+            raise HTTPException(status_code=503, detail=AVATAR_SETUP_HINT) from exc
+        raise HTTPException(
+            status_code=502,
+            detail="Couldn't save that photo. Try a smaller JPEG or PNG.",
+        ) from exc
+    old_path = user.avatar_path
+    try:
+        _set_user_avatar_path(supabase, user.id, path)
+    except Exception:
+        _avatar_remove(supabase, path)
+        raise
+    if old_path and old_path != path:
+        _avatar_remove(supabase, old_path)
+    return AvatarResponse(avatar_url=_avatar_image_url(path), avatar_path=path)
+
+
+@app.delete("/me/avatar", response_model=AvatarResponse)
+def delete_my_avatar(user: CurrentUser):
+    supabase = get_supabase()
+    _set_user_avatar_path(supabase, user.id, None)
+    _avatar_remove(supabase, user.avatar_path)
+    return AvatarResponse(avatar_url=None, avatar_path=None)
 
 
 @app.get("/lounge/messages", response_model=List[LoungeMessage])
@@ -2518,7 +2630,7 @@ def list_lounge_messages(
             supabase.table("community_messages")
             .select(
                 "id, user_id, room_id, author_label, body, created_at, "
-                "image_path, reply_to_id"
+                "image_path, reply_to_id, author_avatar_path"
             )
             .eq("room_id", room)
             .order("created_at", desc=True)
@@ -2526,6 +2638,8 @@ def list_lounge_messages(
             .execute()
         )
     except Exception as exc:
+        if _needs_avatar_migration(exc):
+            raise HTTPException(status_code=503, detail=AVATAR_SETUP_HINT) from exc
         if _needs_lounge_image_migration(exc):
             raise HTTPException(
                 status_code=503, detail=LOUNGE_IMAGE_SETUP_HINT
@@ -2587,6 +2701,7 @@ def post_lounge_message(body: LoungePostRequest, user: CurrentUser):
         "author_label": _lounge_author_label(
             user.email, user.id, user.display_name
         ),
+        "author_avatar_path": user.avatar_path,
         "body": text[:LOUNGE_BODY_MAX],
         "image_path": image_path,
         "reply_to_id": reply_to_id,
@@ -2595,6 +2710,8 @@ def post_lounge_message(body: LoungePostRequest, user: CurrentUser):
         response = supabase.table("community_messages").insert(row).execute()
     except Exception as exc:
         _lounge_remove_image(supabase, image_path)
+        if _needs_avatar_migration(exc):
+            raise HTTPException(status_code=503, detail=AVATAR_SETUP_HINT) from exc
         if _needs_lounge_image_migration(exc):
             raise HTTPException(
                 status_code=503, detail=LOUNGE_IMAGE_SETUP_HINT

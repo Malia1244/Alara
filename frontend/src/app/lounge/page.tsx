@@ -4,6 +4,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "re
 import { useAuth } from "@/components/AuthProvider";
 import CharacterStage from "@/components/CharacterStage";
 import { CutFlower } from "@/components/CutFlowers";
+import ProfileAvatar from "@/components/ProfileAvatar";
 import { IconLounge } from "@/components/nav-icons";
 import {
   apiUnreachableMessage,
@@ -17,10 +18,15 @@ import {
   findLoungeEmoji,
   splitLoungeEmojiText,
 } from "@/lib/loungeEmojis";
+import {
+  latestLoungeActivity,
+  markLoungeSeen,
+} from "@/lib/loungeUnread";
 
 const POLL_MS = 4000;
 const BODY_MAX = 500;
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
+const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
 
 type PendingImage = {
   base64: string;
@@ -189,112 +195,141 @@ function Bubble({
   indented,
   onReply,
   onDelete,
+  myAvatarUrl,
 }: {
   message: LoungeMessage;
   indented?: boolean;
   onReply: (message: LoungeMessage) => void;
   onDelete: (id: string) => void;
+  myAvatarUrl?: string | null;
 }) {
+  const avatarSrc = message.is_mine
+    ? myAvatarUrl || message.author_avatar_url
+    : message.author_avatar_url;
+  const label = message.is_mine ? "You" : message.author_label;
+
   return (
     <div
-      className={`max-w-[90%] rounded-xl px-3.5 py-2.5 text-sm leading-relaxed ${
+      className={`flex max-w-[92%] gap-2 ${
         message.is_mine
-          ? `${indented ? "ml-10 " : ""}ml-auto bg-brand text-white`
-          : `${indented ? "ml-7 sm:ml-10 " : ""}mr-auto border border-border bg-panel text-ink`
+          ? `${indented ? "ml-8 " : ""}ml-auto flex-row-reverse`
+          : `${indented ? "ml-5 sm:ml-8 " : ""}mr-auto`
       }`}
     >
-      <div className="mb-1 flex items-baseline justify-between gap-3">
-        <p
-          className={`text-[11px] font-semibold ${
-            message.is_mine ? "text-white/80" : "text-muted"
-          }`}
-        >
-          {message.is_mine ? "You" : message.author_label}
-          {indented ? " · reply" : ""}
-        </p>
-        <p
-          className={`shrink-0 text-[10px] ${
-            message.is_mine ? "text-white/70" : "text-muted"
-          }`}
-        >
-          {formatStamp(message.created_at)}
-        </p>
-      </div>
-      {message.reply_to_preview && !indented && (
-        <p
-          className={`mb-1.5 line-clamp-2 rounded-md px-2 py-1 text-[11px] ${
-            message.is_mine ? "bg-white/15 text-white/85" : "bg-white text-muted"
-          }`}
-        >
-          Replying to {message.reply_to_label ?? "a post"}:{" "}
-          {message.reply_to_preview}
-        </p>
-      )}
-      {message.image_url && (
-        <a
-          href={message.image_url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mb-2 block"
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={message.image_url}
-            alt="Assignment photo"
-            className={`max-h-56 w-auto rounded-lg object-contain ${
-              message.is_mine ? "border border-white/30" : "border border-border"
-            }`}
-          />
-        </a>
-      )}
-      {message.body && (
-        <p className="whitespace-pre-wrap">
-          {splitLoungeEmojiText(message.body).map((part, i) => {
-            const emoji = findLoungeEmoji(part);
-            if (!emoji) return <span key={i}>{part}</span>;
-            return (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                key={i}
-                src={emoji.src}
-                alt={emoji.label}
-                title={`:${emoji.id}:`}
-                className="mx-0.5 inline-block h-6 w-6 rounded-md object-cover align-[-0.35em]"
-              />
-            );
-          })}
-        </p>
-      )}
-      <div className="mt-1.5 flex gap-3">
-        <button
-          type="button"
-          onClick={() => onReply(message)}
-          className={`rounded-md px-2 py-0.5 text-[11px] font-semibold transition ${
-            message.is_mine
-              ? "bg-white/15 text-white hover:bg-white/25"
-              : "bg-brand-soft text-brand-ink hover:brightness-105"
-          }`}
-        >
-          Reply
-        </button>
-        {message.is_mine && (
-          <button
-            type="button"
-            onClick={() => onDelete(message.id)}
-            className={`text-[11px] font-semibold hover:underline ${
-              message.is_mine ? "text-white/80" : "text-accent"
+      <ProfileAvatar
+        name={label}
+        src={avatarSrc}
+        size="sm"
+        className="mt-0.5"
+      />
+      <div
+        className={`min-w-0 rounded-xl px-3.5 py-2.5 text-sm leading-relaxed ${
+          message.is_mine
+            ? "bg-brand text-white"
+            : "border border-border bg-panel text-ink"
+        }`}
+      >
+        <div className="mb-1 flex items-baseline justify-between gap-3">
+          <p
+            className={`text-[11px] font-semibold ${
+              message.is_mine ? "text-white/80" : "text-muted"
             }`}
           >
-            Remove
-          </button>
+            {label}
+            {indented ? " · reply" : ""}
+          </p>
+          <p
+            className={`shrink-0 text-[10px] ${
+              message.is_mine ? "text-white/70" : "text-muted"
+            }`}
+          >
+            {formatStamp(message.created_at)}
+          </p>
+        </div>
+        {message.reply_to_preview && !indented && (
+          <p
+            className={`mb-1.5 line-clamp-2 rounded-md px-2 py-1 text-[11px] ${
+              message.is_mine
+                ? "bg-white/15 text-white/85"
+                : "bg-white text-muted"
+            }`}
+          >
+            Replying to {message.reply_to_label ?? "a post"}:{" "}
+            {message.reply_to_preview}
+          </p>
         )}
+        {message.image_url && (
+          <a
+            href={message.image_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mb-2 block"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={message.image_url}
+              alt="Assignment photo"
+              className={`max-h-56 w-auto rounded-lg object-contain ${
+                message.is_mine
+                  ? "border border-white/30"
+                  : "border border-border"
+              }`}
+            />
+          </a>
+        )}
+        {message.body && (
+          <p className="whitespace-pre-wrap">
+            {splitLoungeEmojiText(message.body).map((part, i) => {
+              const emoji = findLoungeEmoji(part);
+              if (!emoji) return <span key={i}>{part}</span>;
+              return (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  key={i}
+                  src={emoji.src}
+                  alt={emoji.label}
+                  title={`:${emoji.id}:`}
+                  className="mx-0.5 inline-block h-6 w-6 rounded-md object-cover align-[-0.35em]"
+                />
+              );
+            })}
+          </p>
+        )}
+        <div className="mt-1.5 flex gap-3">
+          <button
+            type="button"
+            onClick={() => onReply(message)}
+            className={`rounded-md px-2 py-0.5 text-[11px] font-semibold transition ${
+              message.is_mine
+                ? "bg-white/15 text-white hover:bg-white/25"
+                : "bg-brand-soft text-brand-ink hover:brightness-105"
+            }`}
+          >
+            Reply
+          </button>
+          {message.is_mine && (
+            <button
+              type="button"
+              onClick={() => onDelete(message.id)}
+              className="text-[11px] font-semibold text-white/80 hover:underline"
+            >
+              Remove
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
 export default function LoungePage() {
-  const { displayName, updateDisplayName } = useAuth();
+  const {
+    displayName,
+    avatarUrl,
+    updateDisplayName,
+    updateAvatar,
+    clearAvatar,
+  } = useAuth();
   const [messages, setMessages] = useState<LoungeMessage[]>([]);
   const [draft, setDraft] = useState("");
   const [pendingImage, setPendingImage] = useState<PendingImage | null>(null);
@@ -304,14 +339,17 @@ export default function LoungePage() {
   const [error, setError] = useState<string | null>(null);
   const [nameDraft, setNameDraft] = useState("");
   const [nameBusy, setNameBusy] = useState(false);
+  const [photoBusy, setPhotoBusy] = useState(false);
   const [nameMsg, setNameMsg] = useState<string | null>(null);
   const [emojiOpen, setEmojiOpen] = useState(false);
   const listRef = useRef<HTMLDivElement | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
+  const avatarFileRef = useRef<HTMLInputElement | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const emojiPanelRef = useRef<HTMLDivElement | null>(null);
   const stickToBottom = useRef(true);
   const windowScrollLock = useRef<{ x: number; y: number } | null>(null);
+  const listScrollLock = useRef<number | null>(null);
 
   useEffect(() => {
     setNameDraft(displayName);
@@ -337,14 +375,46 @@ export default function LoungePage() {
     }, 120);
   }
 
+  /** Keep the message list from jumping while typing in the composer. */
+  function preserveListScroll() {
+    const el = listRef.current;
+    if (!el) return;
+    const top = el.scrollTop;
+    listScrollLock.current = top;
+    const restore = () => {
+      if (listScrollLock.current == null || !listRef.current) return;
+      listRef.current.scrollTop = listScrollLock.current;
+    };
+    restore();
+    requestAnimationFrame(() => {
+      restore();
+      requestAnimationFrame(restore);
+    });
+    window.setTimeout(() => {
+      restore();
+      listScrollLock.current = null;
+    }, 80);
+  }
+
+  function focusComposer() {
+    const el = inputRef.current;
+    if (!el) return;
+    try {
+      el.focus({ preventScroll: true });
+    } catch {
+      el.focus();
+    }
+    preserveWindowScroll();
+    preserveListScroll();
+  }
+
   const threads = useMemo(() => threadMessages(messages), [messages]);
   const dayBuckets = useMemo(() => groupThreadsByDay(threads), [threads]);
 
   function handleReply(message: LoungeMessage) {
     setReplyTo(message);
     requestAnimationFrame(() => {
-      inputRef.current?.focus();
-      preserveWindowScroll();
+      focusComposer();
     });
   }
 
@@ -360,10 +430,9 @@ export default function LoungePage() {
     setEmojiOpen(false);
     requestAnimationFrame(() => {
       if (!el) return;
-      el.focus();
+      focusComposer();
       const cursor = Math.min(start + shortcode.length, next.length);
       el.setSelectionRange(cursor, cursor);
-      preserveWindowScroll();
     });
   }
 
@@ -400,6 +469,7 @@ export default function LoungePage() {
         }
         return data;
       });
+      markLoungeSeen(latestLoungeActivity(data));
       if (!quiet) setError(null);
     } catch (err) {
       if (!quiet) {
@@ -437,8 +507,30 @@ export default function LoungePage() {
     }
   }
 
-  async function onSubmit(e: FormEvent) {
-    e.preventDefault();
+  async function onPickAvatar(file: File | null) {
+    if (!file) return;
+    setPhotoBusy(true);
+    setNameMsg(null);
+    try {
+      if (file.size > AVATAR_MAX_BYTES) {
+        throw new Error("That photo is too large — try one under 2 MB.");
+      }
+      const payload = await fileToBase64(file);
+      const err = await updateAvatar({
+        image_base64: payload.base64,
+        image_mime: payload.mime,
+      });
+      setNameMsg(err ?? "Photo saved — new posts will use it.");
+    } catch (err) {
+      setNameMsg(
+        err instanceof Error ? err.message : "Could not use that photo."
+      );
+    } finally {
+      setPhotoBusy(false);
+    }
+  }
+
+  async function sendMessage() {
     const text = draft.trim();
     if (sending || (!text && !pendingImage)) return;
     setSending(true);
@@ -458,11 +550,19 @@ export default function LoungePage() {
         if (current.some((row) => row.id === saved.id)) return current;
         return [...current, saved];
       });
+      requestAnimationFrame(() => {
+        focusComposer();
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't send that.");
     } finally {
       setSending(false);
     }
+  }
+
+  async function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    await sendMessage();
   }
 
   async function onDelete(id: string) {
@@ -506,39 +606,115 @@ export default function LoungePage() {
           </p>
         </section>
 
-        <section className="bloom-card animate-rise flex flex-col gap-2 p-4 sm:flex-row sm:items-end sm:gap-3">
-          <label className="flex min-w-0 flex-1 flex-col gap-1.5 text-sm">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
-              Display name
-            </span>
+        <section className="bloom-card animate-rise flex flex-col gap-3 p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="flex items-center gap-3">
+              <ProfileAvatar
+                name={displayName || "You"}
+                src={avatarUrl}
+                size="lg"
+              />
+              <div className="flex flex-col gap-1.5">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
+                  Profile photo
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    disabled={photoBusy}
+                    onClick={() => avatarFileRef.current?.click()}
+                    className="rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-semibold text-brand-ink transition hover:bg-brand-soft disabled:opacity-50"
+                  >
+                    {photoBusy
+                      ? "Saving…"
+                      : avatarUrl
+                        ? "Change photo"
+                        : "Add photo"}
+                  </button>
+                  {avatarUrl && (
+                    <button
+                      type="button"
+                      disabled={photoBusy}
+                      onClick={() => {
+                        void (async () => {
+                          setPhotoBusy(true);
+                          setNameMsg(null);
+                          const err = await clearAvatar();
+                          setPhotoBusy(false);
+                          setNameMsg(
+                            err ?? "Photo removed — new posts won’t show one."
+                          );
+                        })();
+                      }}
+                      className="rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-semibold text-accent transition hover:bg-accent-soft disabled:opacity-50"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
             <input
-              value={nameDraft}
-              onChange={(e) => setNameDraft(e.target.value.slice(0, 24))}
-              placeholder="What others see in the Lounge"
-              maxLength={24}
-              className="rounded-2xl border border-border bg-surface px-4 py-2.5 text-ink outline-none transition focus:border-brand"
+              ref={avatarFileRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              className="hidden"
+              onChange={(e) => {
+                void onPickAvatar(e.target.files?.[0] ?? null);
+                e.target.value = "";
+              }}
             />
-          </label>
-          <button
-            type="button"
-            disabled={nameBusy || nameDraft.trim() === displayName}
-            onClick={() => {
-              void (async () => {
-                setNameBusy(true);
-                setNameMsg(null);
-                const err = await updateDisplayName(nameDraft);
-                setNameBusy(false);
-                setNameMsg(err ?? "Saved — new posts will use this name.");
-              })();
-            }}
-            className="bloom-pill shrink-0 px-4 py-2.5 text-sm font-semibold disabled:opacity-50"
-          >
-            {nameBusy ? "Saving…" : "Save name"}
-          </button>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:gap-3">
+            <label className="flex min-w-0 flex-1 flex-col gap-1.5 text-sm">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
+                Display name
+              </span>
+              <input
+                value={nameDraft}
+                onChange={(e) => setNameDraft(e.target.value.slice(0, 24))}
+                onKeyDown={(e) => {
+                  if (e.key !== "Enter") return;
+                  e.preventDefault();
+                  if (nameBusy || nameDraft.trim() === displayName) return;
+                  void (async () => {
+                    setNameBusy(true);
+                    setNameMsg(null);
+                    const err = await updateDisplayName(nameDraft);
+                    setNameBusy(false);
+                    setNameMsg(err ?? "Saved — new posts will use this name.");
+                  })();
+                }}
+                placeholder="What others see in the Lounge"
+                maxLength={24}
+                className="rounded-2xl border border-border bg-surface px-4 py-2.5 text-ink outline-none transition focus:border-brand"
+              />
+            </label>
+            <button
+              type="button"
+              disabled={nameBusy || nameDraft.trim() === displayName}
+              onClick={() => {
+                void (async () => {
+                  setNameBusy(true);
+                  setNameMsg(null);
+                  const err = await updateDisplayName(nameDraft);
+                  setNameBusy(false);
+                  setNameMsg(err ?? "Saved — new posts will use this name.");
+                })();
+              }}
+              className="bloom-pill shrink-0 px-4 py-2.5 text-sm font-semibold disabled:opacity-50"
+            >
+              {nameBusy ? "Saving…" : "Save name"}
+            </button>
+          </div>
           {nameMsg && (
             <p
-              className={`text-xs sm:pb-2 ${
-                nameMsg.startsWith("Saved") ? "text-brand-ink" : "text-accent"
+              className={`text-xs ${
+                nameMsg.startsWith("Saved") ||
+                nameMsg.startsWith("Photo saved") ||
+                nameMsg.startsWith("Photo removed")
+                  ? "text-brand-ink"
+                  : "text-accent"
               }`}
             >
               {nameMsg}
@@ -585,6 +761,7 @@ export default function LoungePage() {
                       message={parent}
                       onReply={handleReply}
                       onDelete={(id) => void onDelete(id)}
+                      myAvatarUrl={avatarUrl}
                     />
                     {replies.map((reply) => (
                       <Bubble
@@ -593,6 +770,7 @@ export default function LoungePage() {
                         indented
                         onReply={handleReply}
                         onDelete={(id) => void onDelete(id)}
+                        myAvatarUrl={avatarUrl}
                       />
                     ))}
                   </div>
@@ -723,12 +901,26 @@ export default function LoungePage() {
                 id="lounge-input"
                 ref={inputRef}
                 value={draft}
-                onChange={(e) => setDraft(e.target.value.slice(0, BODY_MAX))}
-                onFocus={preserveWindowScroll}
+                onChange={(e) => {
+                  setDraft(e.target.value.slice(0, BODY_MAX));
+                  preserveWindowScroll();
+                  preserveListScroll();
+                }}
+                onFocus={() => {
+                  preserveWindowScroll();
+                  preserveListScroll();
+                }}
+                onClick={() => {
+                  preserveWindowScroll();
+                  preserveListScroll();
+                }}
                 onKeyDown={(e) => {
+                  preserveWindowScroll();
                   if (e.key !== "Enter" || e.shiftKey) return;
+                  if (e.nativeEvent.isComposing || e.keyCode === 229) return;
                   e.preventDefault();
-                  e.currentTarget.form?.requestSubmit();
+                  e.stopPropagation();
+                  void sendMessage();
                 }}
                 onPaste={(e) => {
                   const items = e.clipboardData?.items;
@@ -749,7 +941,7 @@ export default function LoungePage() {
                     ? "Write your reply… (Enter to send)"
                     : "Ask how to do this… (Enter to send, Shift+Enter for a new line)"
                 }
-                className="min-h-[2.75rem] flex-1 resize-none rounded-xl border border-border bg-white px-3.5 py-2.5 text-sm text-ink outline-none ring-brand/30 focus:ring-2"
+                className="min-h-[2.75rem] flex-1 resize-none rounded-xl border border-border bg-white px-3.5 py-2.5 text-sm text-ink outline-none ring-brand/30 focus:ring-2 [overflow-anchor:none]"
                 disabled={sending}
               />
               <button

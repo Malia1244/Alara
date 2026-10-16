@@ -7,6 +7,7 @@ import { CutFlower } from "@/components/CutFlowers";
 import { useAraPrefs } from "@/components/AraPrefsProvider";
 import AraPrefsControls from "@/components/AraPrefsControls";
 import DiscordInviteLink from "@/components/DiscordInviteLink";
+import { useLoungeUnread } from "@/hooks/useLoungeUnread";
 import {
   IconCalendar,
   IconHomework,
@@ -140,6 +141,7 @@ const inputClass =
 
 export default function Home() {
   const { prefs, setGender } = useAraPrefs();
+  const loungeUnread = useLoungeUnread();
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -322,23 +324,37 @@ export default function Home() {
             </h2>
           </div>
           <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
-            {QUICK_LINKS.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="interactive-tile flex items-center gap-3 border border-border bg-surface px-3.5 py-3.5"
-              >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-soft text-brand-ink">
-                  <item.Icon className="h-4 w-4" />
-                </span>
-                <span className="min-w-0">
-                  <span className="block text-sm font-semibold text-ink">
-                    {item.label}
+            {QUICK_LINKS.map((item) => {
+              const showDot = item.href === "/lounge" && loungeUnread;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="interactive-tile flex items-center gap-3 border border-border bg-surface px-3.5 py-3.5"
+                >
+                  <span className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-soft text-brand-ink">
+                    <item.Icon className="h-4 w-4" />
+                    {showDot && (
+                      <span
+                        className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-surface"
+                        aria-hidden
+                      />
+                    )}
                   </span>
-                  <span className="block text-[11px] text-muted">{item.hint}</span>
-                </span>
-              </Link>
-            ))}
+                  <span className="min-w-0">
+                    <span className="flex items-center gap-1.5 text-sm font-semibold text-ink">
+                      {item.label}
+                      {showDot && (
+                        <span className="sr-only">New messages</span>
+                      )}
+                    </span>
+                    <span className="block text-[11px] text-muted">
+                      {item.hint}
+                    </span>
+                  </span>
+                </Link>
+              );
+            })}
           </div>
         </section>
 

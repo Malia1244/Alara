@@ -6,24 +6,43 @@ import { useAuth } from "@/components/AuthProvider";
 import LoadingScreen from "@/components/LoadingScreen";
 import { isSupabaseConfigured } from "@/lib/supabase";
 
-const PUBLIC_PATHS = new Set(["/login", "/signup"]);
+const PUBLIC_PATHS = new Set([
+  "/login",
+  "/signup",
+  "/forgot-password",
+  "/reset-password",
+]);
 
 export default function AuthGate({ children }: { children: React.ReactNode }) {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, passwordRecovery } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
   const isPublic = PUBLIC_PATHS.has(pathname);
+  const isResetPassword = pathname === "/reset-password";
 
   useEffect(() => {
     if (isLoading) return;
     if (!isSupabaseConfigured) return;
+    if (passwordRecovery && !isResetPassword) {
+      router.replace("/reset-password");
+      return;
+    }
     if (!user && !isPublic) {
       router.replace("/login");
+      return;
     }
-    if (user && isPublic) {
+    // Stay on reset-password while choosing a new password.
+    if (user && isPublic && !isResetPassword) {
       router.replace("/");
     }
-  }, [user, isLoading, isPublic, router]);
+  }, [
+    user,
+    isLoading,
+    isPublic,
+    isResetPassword,
+    passwordRecovery,
+    router,
+  ]);
 
   if (!isSupabaseConfigured) {
     return (
@@ -43,7 +62,12 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (isLoading || (!user && !isPublic) || (user && isPublic)) {
+  const bouncingSignedInAway =
+    Boolean(user) && isPublic && !isResetPassword;
+  const waitingForAuth = !user && !isPublic;
+  const sendingToReset = passwordRecovery && !isResetPassword;
+
+  if (isLoading || waitingForAuth || bouncingSignedInAway || sendingToReset) {
     return (
       <LoadingScreen
         title="Alara"

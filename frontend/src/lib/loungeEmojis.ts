@@ -22,6 +22,18 @@ export const LOUNGE_EMOJIS: LoungeEmoji[] = [
     src: "/emoji/hehe.png",
     label: "Hehe",
   },
+  {
+    id: "pew",
+    shortcode: ":pew:",
+    src: "/emoji/pew.png",
+    label: "Pew",
+  },
+  {
+    id: "sparkle",
+    shortcode: ":sparkle:",
+    src: "/emoji/sparkle.png",
+    label: "Sparkle",
+  },
 ];
 
 const SHORTCODE_PATTERN = /(:[a-z0-9_]+:)/gi;

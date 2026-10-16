@@ -25,6 +25,7 @@ class AuthUser:
     id: str
     email: Optional[str]
     display_name: Optional[str] = None
+    avatar_path: Optional[str] = None
 
 
 def get_current_user(
@@ -70,10 +71,17 @@ def get_current_user(
     display_name = (
         str(raw_name).strip()[:24] if raw_name and str(raw_name).strip() else None
     )
+    raw_avatar = meta.get("avatar_path") if isinstance(meta, dict) else None
+    avatar_path = (
+        str(raw_avatar).strip()[:240]
+        if raw_avatar and str(raw_avatar).strip()
+        else None
+    )
     return AuthUser(
         id=str(user_id),
         email=str(email).strip() if email else None,
         display_name=display_name,
+        avatar_path=avatar_path,
     )
 
 
